@@ -45,7 +45,30 @@ node walkthrough/render.mjs out/demo-taskly           # → out/demo-taskly/demo
 node walkthrough/review.mjs out/demo-taskly --fix     # check every zoom, fix the ones that hide the action
 node walkthrough/render.mjs out/demo-taskly           # render with the fixed zooms
 node walkthrough/review.mjs out/demo-taskly           # must pass; then look at review/sheet.png
+node walkthrough/finish.mjs out/demo-taskly           # poster frame (baked in as frame 0) and share copy
 ```
+
+## Shape: plan, hook, length
+
+A flow can carry the brief for its video, from `latent-spaces/brag`'s playbook. Short beats long
+(15–25 s), and the first two seconds decide whether anyone keeps watching.
+
+- **`plan`**: what it is, who it's for, the hook, the flow, the target `duration` ([min, max] s)
+  and `milestones` ({beat, by}: an action that must happen by then). `record.mjs` writes it to
+  `plan.md`, and `review.mjs` fails the video if it runs too long or a milestone comes late.
+- **`hook`** (`{mark, seconds}`): the video opens on a few seconds from a moment the flow marked
+  with `d.mark(name)`, usually the payoff, then cuts to the start.
+- **`d.idle(fn)`** cuts what happens in `fn` (waits on the app, housekeeping the viewer needn't
+  see). **`d.fast(fn, {speed})`** plays it faster (a countdown, a progress bar). **`lead`** (ms)
+  sets the pause before the first action.
+
+The recording is put together from an edit list (stretches of the capture, in order, at their
+speed), and the cursor log and the actions go through the same edit. So to Recordly and the review
+it's one continuous recording.
+
+- **`poster`** (an action's label) and **`share`** (1–3 sentences): `finish.mjs` takes the poster at
+  that action once it has settled. It saves it as `<flow>.jpg` and bakes it in as frame 0, which is
+  what Slack, X and Discord show as the thumbnail. It writes the share copy to `share-copy.txt`.
 
 ## Review: frame by frame
 
@@ -65,6 +88,10 @@ click. `review.mjs` checks every action in the video:
 - **Motion.** It fails if the camera zooms faster than 3 doublings per second or pans faster than 1.2
   view widths per second. The focused preset peaks around 12 doublings per second; smooth stays
   under 3.
+- **Readable.** Once an action has happened, the view has to hold still long enough to read what
+  it shows, counted until the next action: about 0.15 s per word (mostly labels, read at a
+  glance), between 0.8 and 2 s. `--fix` can't lengthen a hold; the flow has to.
+- **The plan.** It fails if the video is outside the plan's length or a milestone comes late.
 - **The flow.** It fails if a `show` target never appeared, or if a click, typing or key press
   changed nothing on screen. Either means the flow didn't do what it meant to.
 
@@ -74,7 +101,8 @@ than still shows all of it, and never past 2×. A zoom is removed if that would 
 adds the zooms the flow asked for, and re-checks the camera after each change until every beat
 passes. Then it saves the project for a re-render.
 
-`review/sheet.png` is a contact sheet with one row per action. The first frame is the raw
+`review/sheet.png` is a contact sheet with one row per action, plus a row of stills from halfway
+through every zoom-in, zoom-out and glide, where a move between two busy views can turn muddy. The first frame is the raw
 recording, with the needed area in green and the camera's view in blue (dashed at the moment of
 the action). It's followed by frames from the finished video at the action, midway and after. The
 numbers catch framing; the sheet is for what they can't catch, like the wrong state, a result that
@@ -175,10 +203,12 @@ zoom. Hold after a click that changes the screen, so the viewer sees what happen
   trim off the start, and play it back. 38 s, 60 fps, reviewed and fixed (all 15 actions in view,
   peak zoom speed 3.0 doublings/s); contact sheet `videos/recordly-record-review.png`.
 - `videos/recordly-windows.mp4`: Recordly on a Windows 11 desktop, starting from its recorder bar,
-  with Taskly already open. Record, hide the bar, create a project in Taskly, stop with
-  Ctrl+Shift+2, then in the editor trim the start, point out the suggested zoom and play it back.
-  37 s, 1920×1080 at 60 fps, reviewed and fixed (all 14 actions in view); contact sheet
-  `videos/recordly-windows-review.png`.
+  with Taskly already open. It opens on the payoff (the recording playing back, zoomed in), then
+  records with a 3× countdown, creates a project in Taskly, stops with Ctrl+Shift+2, points out the
+  suggested zoom and plays it back. The trim is done off-camera. 24.6 s, 1920×1080 at 60 fps,
+  reviewed and fixed (all actions in view and readable, plan met). Also: the poster
+  `videos/recordly-windows.jpg` (frame 0 of the video), `videos/recordly-windows-share.txt`, the
+  plan `videos/recordly-windows-plan.md` and the contact sheet `videos/recordly-windows-review.png`.
 - `videos/demo-taskly.mp4`: the pipeline on the bundled demo page (`demo-app/`): create a project,
   open it, add two tasks, tick one off. 27 s, 1080p60, smooth motion, reviewed and fixed (all
   11 actions in view, peak zoom speed 2.6 doublings/s); its contact sheet is `videos/demo-taskly-review.png`.

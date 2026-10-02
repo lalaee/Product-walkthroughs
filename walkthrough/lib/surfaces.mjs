@@ -40,6 +40,9 @@ export class PageSurface {
   clickable(target) {
     return this.#loc(target).first().evaluate(new Function('el', `return (${CLICKABLE})(el)`), null, {timeout: 1000});
   }
+  text(target) {
+    return this.#loc(target).first().innerText({timeout: 1000});
+  }
   /** As the browser would draw it, from the CSS cursor under the pointer. */
   shape({x, y}) {
     return this.page.evaluate(([x, y]) => {
@@ -112,6 +115,9 @@ export class DesktopSurface {
   }
   clickable(locator) {
     return locator.first().evaluate(new Function('el', `return (${CLICKABLE})(el)`), null, {timeout: 1000});
+  }
+  text(locator) {
+    return locator.first().innerText({timeout: 1000});
   }
   async shape() {
     const k = this.native?.cursorKind?.();

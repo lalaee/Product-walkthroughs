@@ -33,6 +33,8 @@ export class Director {
     this.kindAt = 0;
     this.hover = null; // the target the pointer is heading to or resting on: its box, and whether it's clickable
     this.waits = []; // [start, end] wall-clock ms of waits to cut from the video
+    this.marks = {}; // named moments (wall-clock ms), e.g. where the hook is taken from
+    this.fasts = []; // [start, end, speed] wall-clock ms of stretches to play faster
   }
 
   #write(entry) {
@@ -63,6 +65,7 @@ export class Director {
     const list = [show].flat();
     const boxes = await Promise.all(list.map(s => this.#box(s)));
     beat.show = boxes.filter(Boolean);
+    beat.words = await this.#words(list);
     const missing = list.filter((_, i) => !boxes[i]).map(String);
     if (missing.length) beat.showMissing = missing.join(', ');
   }
@@ -76,6 +79,12 @@ export class Director {
       beat.end = Date.now();
       if (show) await this.#shows(beat, show);
     };
+  }
+
+  /** How many words the viewer is meant to read in these targets (for the review's readability check). */
+  async #words(targets) {
+    const texts = await Promise.all(targets.filter(t => t && !isPoint(t)).map(t => this.s.text(t).catch(() => '')));
+    return texts.join(' ').split(/\s+/).filter(w => /\w/.test(w)).length;
   }
 
   async #moveRaw(x, y) {
@@ -173,11 +182,27 @@ export class Director {
     return sleep(ms);
   }
 
+  /** Plays what happens during `fn` faster in the video (a countdown, a progress bar): `speed`×. */
+  async fast(fn, {speed = 2} = {}) {
+    const start = Date.now();
+    try {
+      return await fn();
+    } finally {
+      this.fasts.push([start, Date.now(), speed]);
+    }
+  }
+
+  /** Names this moment, e.g. for the flow's `hook` (the video opens on a few seconds from here). */
+  mark(name) {
+    this.marks[name] = Date.now();
+  }
+
   /**
-   * Waits on the app (it opens a window, analyses something) and cuts the wait from the video:
-   * record.mjs removes the span, keeping `keep` ms at each end so the change still reads.
+   * Waits on the app (it opens a window, analyses something), or does something the viewer needn't
+   * see, and cuts it from the video: record.mjs removes the span, keeping `keep` ms at each end so
+   * the change still reads. Actions inside it are left out of the review.
    */
-  async idle(fn, {keep = 400} = {}) {
+  async idle(fn, {keep = 250} = {}) {
     const start = Date.now();
     try {
       return await fn();

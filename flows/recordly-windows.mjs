@@ -18,6 +18,23 @@ export const size = '1920x1080';
 export const aspect = '16:9';
 export const background = '../desktops/windows11/desktop.html';
 
+// The plan: what this video is for, and what the review holds it to.
+export const plan = {
+  what: 'Recordly records your screen and turns it into a polished video, zooming in where you clicked.',
+  audience: 'People who make product demos and walkthroughs on Windows.',
+  hook: 'Open on the payoff: the finished recording already playing back in Recordly, zoomed in on the click.',
+  flow: ['The recorder bar is up over Taskly, open on the desktop', 'Record: 3, 2, 1', 'Create a project in Taskly while it records', 'Stop with Ctrl+Shift+2', 'Recordly has already suggested a zoom from the clicks', 'Play it back'],
+  duration: [15, 25],
+  milestones: [{beat: 'Record', by: 7}, {beat: 'Stop (Ctrl+Shift+2)', by: 18}, {beat: 'Play', by: 23}]
+};
+// open on 2.2 s of the playback (marked by finishInEditor)
+export const hook = {mark: 'payoff', seconds: 2.2};
+// after the hook, straight in
+export const lead = 400;
+// the poster: the playback, zoomed in
+export const poster = 'Play';
+export const share = 'Hit Record, use your app, press Ctrl+Shift+2. Recordly hands it back already zoomed in on every click.';
+
 const taskly = pathToFileURL(new URL('../demo-app/index.html', import.meta.url).pathname).href;
 const TASKBAR = 48;
 
@@ -85,8 +102,7 @@ function windowsTitleBar(title) {
 export async function run(d, ctx) {
   const {overlay, taskly} = ctx;
   const bar = [overlay.getByRole('button', {name: /^Move recorder/}), overlay.getByRole('button', {name: 'More recorder options'})];
-  await d.point(taskly.locator('h2'), {hold: 900, label: 'Taskly'});
-  await d.point(overlay.getByRole('button', {name: /^Countdown/}), {hold: 1200, show: bar, label: 'the recorder bar', zoom: 1.8});
+  await d.point(overlay.getByRole('button', {name: /^Countdown/}), {hold: 1000, show: bar, label: 'the recorder bar', zoom: 1.8});
   const trimAt = await recordTaskly(d, ctx);
   await finishInEditor(d, ctx, trimAt);
 }

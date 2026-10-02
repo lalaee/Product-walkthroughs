@@ -1,0 +1,1 @@
+Hit Record, use your app, press Ctrl+Shift+2. Recordly hands it back already zoomed in on every click.

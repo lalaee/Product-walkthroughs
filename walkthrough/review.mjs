@@ -153,8 +153,32 @@ function check(d) {
       const f = late.reduce((a, c) => (c.v.amount > a.v.amount ? c : a));
       problems.push(need.w * MARGIN > f.v.w || need.h * MARGIN > f.v.h ? `zoomed too far at ${f.s.toFixed(1)} s: ${f.v.amount}× shows ${Math.round(f.v.w)}×${Math.round(f.v.h)}, the action needs ${need.w}×${need.h} (at most ${capFor(need).toFixed(1)}×)` : `the view at ${f.s.toFixed(1)} s (${f.v.amount}×) misses part of what the action needs`);
     }
-    return {i, beat: b, result, need, view: viewAt(b.end - 0.05, d), viewAtAction: viewAt(b.t, d), zooms: [...zooms], problems};
+    // Readable: once the action has happened, the view holds still long enough to read what it shows
+    // (kept apart from `problems`: --fix reframes zooms, it can't make a hold longer)
+    // the viewer can read until the next action starts (or the video ends)
+    const next = beats.filter(x => x.t > b.t + 0.05 && x.label.startsWith('hook · ') === b.label.startsWith('hook · ')).reduce((m, x) => Math.min(m, x.t), b.label.startsWith('hook · ') ? Math.max(...beats.filter(x => x.label.startsWith('hook · ')).map(x => x.end)) : rec.durationSec);
+    const hold = holdFor(b), held = b.words ? steadyFor(b.t + 0.3, Math.max(b.end, next), d) : Infinity;
+    const read = held + 0.05 < hold ? `readability: the view holds still for ${held.toFixed(1)} s after the ${b.action}; its ${b.words} words need ${hold.toFixed(1)} s (a longer hold in the flow)` : null;
+    return {i, beat: b, result, need, view: viewAt(b.end - 0.05, d), viewAtAction: viewAt(b.t, d), zooms: [...zooms], problems, read};
   });
+}
+/**
+ * How long a beat's result should stay still to be read: ~0.15 s per word, between 0.8 and 2 s.
+ * What's on screen is mostly labels (a dialog's title, fields and buttons), read at a glance, not
+ * sentences; prose needs the flow to hold longer than this asks.
+ */
+const holdFor = b => Math.min(2, Math.max(0.8, (b.words ?? 0) * 0.15));
+/** The longest stretch in [a, z] where the camera neither zooms nor pans. */
+function steadyFor(a, z, d) {
+  let best = 0, run = 0, prev = viewAt(a, d);
+  for (const s of span(a + 0.05, z)) {
+    const v = viewAt(s, d);
+    const moved = Math.abs(v.amount - prev.amount) > 0.004 || Math.hypot(v.x + v.w / 2 - (prev.x + prev.w / 2), v.y + v.h / 2 - (prev.y + prev.h / 2)) > W * 0.0015;
+    run = moved ? 0 : run + 0.05;
+    best = Math.max(best, run);
+    prev = v;
+  }
+  return best;
 }
 let results = check(doc);
 
@@ -194,12 +218,28 @@ const rows = results.map(r => {
   const shots = [b.t, (b.t + b.end) / 2, b.end - 0.05].map((s, k) => still(video, s, `${n}-${k}.jpg`));
   return `<section class="${r.problems.length ? 'bad' : 'ok'}">
     <h2>${n} · ${b.action} · ${b.label.replace(/</g, '&lt;')} <small>${b.t.toFixed(1)}–${b.end.toFixed(1)} s · ${r.view.amount}× after</small></h2>
-    ${r.problems.map(p => `<p>✗ ${p}</p>`).join('') || '<p class="pass">✓ in view</p>'}
+    ${r.problems.map(p => `<p>✗ ${p}</p>`).join('') || '<p class="pass">✓ in view</p>'}${r.read ? `<p class="read">✗ ${r.read}</p>` : ''}
     <div class="row">
       <figure><div class="frame"><img src="${rawShot}">${rect(r.need, 'need')}${rect(r.viewAtAction, 'view at')}${rect(r.view, 'view')}</div><figcaption>raw · green: needed · blue: camera (dashed at the action)</figcaption></figure>
       ${shots.map((s, k) => `<figure><img src="${s}"><figcaption>video · ${['action', 'midway', 'after'][k]}</figcaption></figure>`).join('')}
     </div></section>`;
 });
+// Mid-transition stills: halfway through every zoom-in, zoom-out and glide, where a move between
+// two busy views can turn muddy.
+const RAMP = (doc.motion?.preset ?? 'smooth') === 'focused' ? 0.45 : 1.1;
+const sorted = [...doc.zooms].sort((a, b) => a.start - b.start);
+const linked = (a, b) => a && b && doc.motion?.connect && b.start - a.end < 1.5;
+const moves = sorted.flatMap((z, i) => {
+  const r = Math.min(RAMP, (z.end - z.start) / 2), prev = sorted[i - 1], next = sorted[i + 1];
+  return [
+    ...(linked(prev, z) ? [] : [{s: z.start + r / 2, what: `into ${z.amount}×`}]),
+    linked(z, next) ? {s: (z.end + next.start) / 2, what: `glide ${z.amount}× → ${next.amount}×`} : {s: z.end - r / 2, what: `out of ${z.amount}×`}
+  ];
+});
+const moveShots = moves.map((m, k) => ({...m, img: still(video, m.s, `move-${String(k + 1).padStart(2, '0')}.jpg`)}));
+const transitions = moveShots.length
+  ? `<section class="moves"><h2>Mid-transition <small>halfway through each camera move</small></h2><div class="grid">${moveShots.map(m => `<figure><img src="${m.img}"><figcaption>${m.s.toFixed(1)} s · ${m.what}</figcaption></figure>`).join('')}</div></section>`
+  : '';
 writeFileSync(
   join(dir, 'sheet.html'),
   `<!doctype html><meta charset="utf-8"><style>
@@ -210,8 +250,9 @@ writeFileSync(
   .row{display:flex;gap:12px} figure{margin:0} figure img{width:480px;display:block;border-radius:4px}
   figcaption{color:#9a9ba1;font-size:12px;margin-top:4px} .frame{position:relative}
   .need,.view{position:absolute;box-sizing:border-box} .need{border:3px solid #3ecf8e;background:#3ecf8e22}
-  .view{border:3px solid #4f8cff} .view.at{border-style:dashed}
-  </style><h1>${project.name} — ${results.filter(r => r.problems.length).length} of ${results.length} beats need attention</h1>${rows.join('')}`
+  .view{border:3px solid #4f8cff} .view.at{border-style:dashed} p.read{color:#ffc46b}
+  section.moves{border-left-color:#4f8cff} .grid{display:grid;grid-template-columns:repeat(4,480px);gap:12px}
+  </style><h1>${project.name} — ${results.filter(r => r.problems.length || r.read).length} of ${results.length} beats need attention</h1>${rows.join('')}${transitions}`
 );
 const browser = await chromium.launch({executablePath: process.env.CHROME_PATH ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'});
 const page = await browser.newPage({viewport: {width: 2048, height: 800}});
@@ -220,13 +261,26 @@ await page.screenshot({path: join(dir, 'sheet.png'), fullPage: true});
 await browser.close();
 
 // ---------------------------------------------------------------- report and fix
-const failing = results.filter(r => r.problems.length);
+const failing = results.filter(r => r.problems.length || r.read);
 const m = motionOf(doc);
 const harsh = [];
 if (m.zoom.v > MAX_ZOOM_SPEED) harsh.push(`camera zooms too sharply at ${m.zoom.s.toFixed(1)} s (${m.zoom.v.toFixed(1)} doublings/s, at most ${MAX_ZOOM_SPEED}); try --motion smooth`);
 if (m.pan.v > MAX_PAN_SPEED) harsh.push(`camera pans too fast at ${m.pan.s.toFixed(1)} s (${m.pan.v.toFixed(1)} view widths/s, at most ${MAX_PAN_SPEED})`);
 const lines = [`# Review: ${project.name}`, '', `${results.length} beats, ${doc.zooms.length} zooms (${doc.motion?.preset} motion), ${failing.length} beats need attention.`, `Motion: peak zoom speed ${m.zoom.v.toFixed(1)} doublings/s at ${m.zoom.s.toFixed(1)} s, peak pan ${m.pan.v.toFixed(1)} view widths/s at ${m.pan.s.toFixed(1)} s.${harsh.map(h => `\n- ✗ ${h}`).join('')}`, ''];
-for (const r of results) lines.push(`- ${r.problems.length ? '✗' : '✓'} ${String(r.i + 1).padStart(2, '0')} ${r.beat.action} ${r.beat.label} (${r.beat.t.toFixed(1)} s)${r.problems.map(p => `\n  - ${p}`).join('')}`);
+// The plan's checks (walkthrough.json, from the flow): the length, and when the milestones land
+const meta = JSON.parse(readFileSync(join(out, 'walkthrough.json'), 'utf8'));
+const planIssues = [];
+if (meta.plan) {
+  const [lo, hi] = meta.plan.duration ?? [0, Infinity];
+  if (rec.durationSec < lo || rec.durationSec > hi) planIssues.push(`plan: the video is ${rec.durationSec.toFixed(1)} s; the plan says ${lo}–${hi} s`);
+  for (const ms of meta.plan.milestones ?? []) {
+    const b = beats.find(x => !x.label.startsWith('hook · ') && x.label === ms.beat);
+    if (!b) planIssues.push(`plan: no "${ms.beat}" in the video`);
+    else if (b.t > ms.by) planIssues.push(`plan: "${ms.beat}" comes at ${b.t.toFixed(1)} s; the plan wants it by ${ms.by} s`);
+  }
+  lines.push(`Plan: ${rec.durationSec.toFixed(1)} s (target ${lo}–${hi} s)${planIssues.length ? planIssues.map(x => `\n- ✗ ${x}`).join('') : ', milestones on time.'}`, '');
+}
+for (const r of results) lines.push(`- ${r.problems.length || r.read ? '✗' : '✓'} ${String(r.i + 1).padStart(2, '0')} ${r.beat.action} ${r.beat.label} (${r.beat.t.toFixed(1)} s)${[...r.problems, ...(r.read ? [r.read] : [])].map(p => `\n  - ${p}`).join('')}`);
 
 if (fix) {
   // Recordly's camera is pure, so fixes are checked here before rendering: repeat until clean.
@@ -234,6 +288,7 @@ if (fix) {
   // zooms the flow asked for where there's none: manual, on the action's target and result, from a
   // moment before it until a moment after, kept clear of the zooms around it
   const tooBig = new Set();
+  const hookEnd = Math.max(0, ...beats.filter(b => b.label.startsWith('hook · ')).map(b => b.end));
   const addWanted = () => {
     for (const [i, b] of beats.entries()) {
       if (!b.zoom || tooBig.has(i) || doc.zooms.some(z => z.start < b.end && z.end > (b.t + b.end) / 2) || !needs[i].need) continue;
@@ -243,8 +298,13 @@ if (fix) {
       // A second between neighbouring zooms, so Recordly's glide from one to the other takes that
       // second instead of snapping: this one ends a second before the next zoom (or the next action
       // that wants its own), and a zoom running into this beat ends a second before this one starts.
-      const GLIDE = 1.0;
-      const after = Math.min(Infinity, ...doc.zooms.filter(z => z.start >= (b.t + b.end) / 2).map(z => z.start - GLIDE), ...beats.filter(n => n.zoom && n.t > b.t).map(n => n.t - 0.2 - GLIDE));
+      // The hook's end is a cut to the start of the walkthrough: no zoom glides across it. A hook zoom
+      // ends before the hook does, and the next zoom starts far enough on that Recordly doesn't
+      // connect the two (1.5 s).
+      const GLIDE = 1.0, APART = 1.6;
+      const isHook = b.label.startsWith('hook · ');
+      const gapAfter = z => (hookEnd && z.end <= hookEnd + 0.01 ? APART : GLIDE);
+      const after = Math.min(isHook ? hookEnd - 0.6 : Infinity, ...doc.zooms.filter(z => z.start >= (b.t + b.end) / 2).map(z => z.start - GLIDE), ...beats.filter(n => n.zoom && n.t > b.t).map(n => n.t - 0.2 - GLIDE));
       const before0 = before;
       for (const z of doc.zooms) if (z.end > b.t - 0.2 - GLIDE && z.start < b.t) z.end = Math.max(z.start + 0.6, Math.min(z.end, b.t - 0.2 - GLIDE));
       const amount = Math.min(b.zoom, MAX_AMOUNT, Math.floor(capFor(need) * 10) / 10);
@@ -253,7 +313,7 @@ if (fix) {
         lines.push(`- ${b.t.toFixed(1)} s ${b.label}: wanted a ${b.zoom}× zoom, but what it needs (${need.w}×${need.h}) only fits at ${amount}×; left unzoomed`);
         continue;
       }
-      const z = {id: `zm-flow-${i}`, start: +Math.max(before0, b.t - 0.8, ...doc.zooms.filter(z => z.start < b.t).map(z => z.end + GLIDE)).toFixed(2), end: +Math.min(after, b.end + 0.9).toFixed(2), amount, mode: 'manual', focus: {x: +(((need.x + need.w / 2) / W) * 100).toFixed(2), y: +(((need.y + need.h / 2) / H) * 100).toFixed(2)}};
+      const z = {id: `zm-flow-${i}`, start: +Math.max(before0, b.t - 0.8, ...doc.zooms.filter(z => z.start < b.t).map(z => z.end + gapAfter(z))).toFixed(2), end: +Math.min(after, b.end + 0.9).toFixed(2), amount, mode: 'manual', focus: {x: +(((need.x + need.w / 2) / W) * 100).toFixed(2), y: +(((need.y + need.h / 2) / H) * 100).toFixed(2)}};
       doc.zooms.push(z);
       doc.zooms.sort((a, c) => a.start - c.start);
       lines.push(`- ${z.start.toFixed(1)}–${z.end.toFixed(1)} s: added a ${amount}× zoom on ${b.label}, as the flow asked`);
@@ -291,11 +351,24 @@ if (fix) {
         lines.push(`- ${z.start.toFixed(1)}–${z.end.toFixed(1)} s: ${before} → removed${need ? ` (what it covers spans ${need.w}×${need.h}, too much to zoom)` : ''}`);
         continue;
       }
+      const focus = {x: +(((need.x + need.w / 2) / W) * 100).toFixed(2), y: +(((need.y + need.h / 2) / H) * 100).toFixed(2)};
+      const same = z.mode === 'manual' && z.amount === Math.min(z.amount, cap) && z.focus.x === focus.x && z.focus.y === focus.y;
       z.amount = Math.min(z.amount, cap);
       z.mode = 'manual';
-      z.focus = {x: +(((need.x + need.w / 2) / W) * 100).toFixed(2), y: +(((need.y + need.h / 2) / H) * 100).toFixed(2)};
-      lines.push(`- ${z.start.toFixed(1)}–${z.end.toFixed(1)} s: ${before} → ${z.amount}× manual, centred on the ${need.w}×${need.h} area its beats need`);
+      z.focus = focus;
+      if (!same) lines.push(`- ${z.start.toFixed(1)}–${z.end.toFixed(1)} s: ${before} → ${z.amount}× manual, centred on the ${need.w}×${need.h} area its beats need`);
     }
+  }
+  // Zooms that move the camera too sharply (a short zoom ramps fast): ease them off 0.1× at a time
+  for (let round = 0; round < 12; round++) {
+    const mv = motionOf(doc);
+    if (mv.zoom.v <= MAX_ZOOM_SPEED) break;
+    const near = [...doc.zooms].sort((a, b) => Math.min(Math.abs(a.start - mv.zoom.s), Math.abs(a.end - mv.zoom.s)) - Math.min(Math.abs(b.start - mv.zoom.s), Math.abs(b.end - mv.zoom.s)))[0];
+    if (!near) break;
+    const before = near.amount;
+    near.amount = +(near.amount - 0.1).toFixed(2);
+    if (near.amount < MIN_ZOOM) doc.zooms = doc.zooms.filter(x => x !== near);
+    lines.push(`- ${near.start.toFixed(1)}–${near.end.toFixed(1)} s: ${before}× → ${near.amount < MIN_ZOOM ? 'removed' : `${near.amount}×`}, as it moved the camera at ${mv.zoom.v.toFixed(1)} doublings/s`);
   }
   const mf = motionOf(doc);
   if (mf.zoom.v > MAX_ZOOM_SPEED) lines.push(`- the camera still zooms too sharply at ${mf.zoom.s.toFixed(1)} s (${mf.zoom.v.toFixed(1)} doublings/s): space those zooms out in the flow`);
@@ -307,4 +380,4 @@ if (fix) {
 writeFileSync(join(dir, 'report.md'), lines.join('\n') + '\n');
 console.log(lines.join('\n'));
 console.log(`\ncontact sheet: ${join(dir, 'sheet.png')}`);
-process.exitCode = (failing.length && !fix) || harsh.length ? 1 : 0;
+process.exitCode = (failing.length && !fix) || harsh.length || planIssues.length ? 1 : 0;
