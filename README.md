@@ -152,7 +152,7 @@ zoom. Hold after a click that changes the screen, so the viewer sees what happen
 ## Videos
 
 - `videos/recordly-record.mp4`: Recordly recording a fresh screen on a 1440×900 desktop, as a
-  1440×1440 square video. Start a new recording, hide the recorder, create a project in Taskly
+  1440×900 (16:10) video. Start a new recording, hide the recorder, create a project in Taskly
   while it records, stop with Ctrl+Shift+2, land in the editor with zooms suggested from the clicks,
   trim off the start, and play it back. 38 s, 60 fps, reviewed and fixed (all 15 actions in view,
   peak zoom speed 3.0 doublings/s); contact sheet `videos/recordly-record-review.png`.

@@ -13,7 +13,7 @@ import {launchRecordly} from '../walkthrough/lib/recordly.mjs';
 export const name = 'Recordly — record your screen';
 export const desktop = true;
 export const size = '1440x900';
-export const aspect = '1:1';
+export const aspect = '16:10';
 
 const taskly = pathToFileURL(new URL('../demo-app/index.html', import.meta.url).pathname).href;
 
