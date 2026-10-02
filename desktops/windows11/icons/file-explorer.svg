@@ -1,0 +1,18 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="30" height="27" viewBox="0 0 30 27" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="file Explorer">
+<rect id="Rectangle 14" x="0.5" y="3.5" width="29" height="23" rx="1.5" fill="url(#paint0_linear_0_93)" stroke="url(#paint1_linear_0_93)"/>
+<path id="Rectangle 13" d="M0 1C0 0.447715 0.447715 0 1 0H9.93381C10.2851 0 10.6106 0.184299 10.7913 0.485504L12.5913 3.4855C12.9912 4.15203 12.5111 5 11.7338 5H0V1Z" fill="#E09F00"/>
+<path id="Rectangle 15" d="M5 21C5 19.8954 5.89543 19 7 19H23C24.1046 19 25 19.8954 25 21V27H5V21Z" fill="#036ABB"/>
+<path id="Vector 4" d="M22 22.5H8" stroke="#114A8B"/>
+</g>
+<defs>
+<linearGradient id="paint0_linear_0_93" x1="15" y1="3" x2="15" y2="27" gradientUnits="userSpaceOnUse">
+<stop stop-color="#FFCF4D"/>
+<stop offset="1" stop-color="#F4B509"/>
+</linearGradient>
+<linearGradient id="paint1_linear_0_93" x1="15" y1="3" x2="15" y2="27" gradientUnits="userSpaceOnUse">
+<stop stop-color="#FFD04E"/>
+<stop offset="1" stop-color="#F4B509"/>
+</linearGradient>
+</defs>
+</svg>

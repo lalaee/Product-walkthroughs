@@ -1,0 +1,41 @@
+<!doctype html>
+<!-- A Windows 11 desktop: the Bloom wallpaper and the taskbar, from the Windows 11 UI Kit (Community)
+     on Figma (node 1603:2948; icons from its "Task bar" instance, 1603:2949). Rendered to an image at
+     the desktop's size and set as its background (walkthrough/lib/display.mjs). The taskbar is the
+     dark-mode one, 48 px tall as at 100% scale. -->
+<meta charset="utf-8">
+<style>
+  html, body { margin: 0; width: 100vw; height: 100vh; overflow: hidden; }
+  body { background: #0a1730 url(wallpaper.jpg) center / cover no-repeat; position: relative; font-family: "Segoe UI Variable", "Segoe UI", "Inter", "Noto Sans", system-ui, sans-serif; color: #fff; }
+  .taskbar { position: absolute; left: 0; right: 0; bottom: 0; height: 48px; background: rgba(28, 30, 38, 0.82); backdrop-filter: blur(40px) saturate(1.6); border-top: 1px solid rgba(255, 255, 255, 0.07); display: flex; align-items: center; }
+  .weather { position: absolute; left: 14px; display: flex; align-items: center; gap: 8px; font-size: 12px; line-height: 16px; }
+  .weather img { width: 28px; }
+  .weather b { display: block; font-weight: 600; }
+  .apps { position: absolute; left: 50%; transform: translateX(-50%); display: flex; gap: 4px; }
+  .app { width: 40px; height: 40px; border-radius: 4px; display: grid; place-items: center; position: relative; }
+  .app img, .app svg { width: 24px; height: 24px; object-fit: contain; }
+  .app.light img { filter: brightness(0) invert(1); }
+  .app.running::after { content: ""; position: absolute; bottom: 2px; width: 6px; height: 3px; border-radius: 2px; background: #9aa3b5; }
+  .tray { position: absolute; right: 12px; display: flex; align-items: center; gap: 14px; font-size: 12px; }
+  .tray .chev { width: 12px; filter: brightness(0) invert(1); }
+  .tray svg { width: 16px; height: 16px; }
+  .clock { text-align: right; line-height: 16px; }
+</style>
+<div class="taskbar">
+  <div class="weather"><img src="icons/weather.svg" alt=""><div><b>8°C</b>Partly sunny</div></div>
+  <div class="apps">
+    <div class="app"><img src="icons/start.svg" alt=""></div>
+    <div class="app light"><img src="icons/search.svg" alt=""></div>
+    <div class="app"><svg viewBox="0 0 24 24"><rect x="2" y="5" width="13" height="13" rx="2" fill="#7f8796"/><rect x="8" y="2" width="14" height="14" rx="2" fill="#dfe3ea"/></svg></div>
+    <div class="app"><img src="icons/chat.svg" alt=""></div>
+    <div class="app"><img src="icons/file-explorer.svg" alt=""></div>
+    <div class="app running"><img src="icons/edge.svg" alt=""></div>
+  </div>
+  <div class="tray">
+    <img class="chev" src="icons/tray-overflow.svg" alt="">
+    <svg viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="1.3" stroke-linecap="round"><path d="M1.5 6a9.5 9.5 0 0 1 13 0M3.8 8.4a6.2 6.2 0 0 1 8.4 0M6.1 10.8a3 3 0 0 1 3.8 0"/><circle cx="8" cy="13" r=".9" fill="#fff" stroke="none"/></svg>
+    <svg viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"><path d="M2 6h2.5L8 3v10L4.5 10H2z"/><path d="M10.5 5.5a3.5 3.5 0 0 1 0 5M12.5 3.5a6.3 6.3 0 0 1 0 9"/></svg>
+    <svg viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="1.2"><rect x="1" y="4.5" width="12.5" height="7" rx="1.5"/><rect x="2.6" y="6.1" width="8" height="3.8" rx=".6" fill="#fff" stroke="none"/><path d="M14.8 6.8v2.4" stroke-linecap="round"/></svg>
+    <div class="clock">11:00 AM<br>10/2/2026</div>
+  </div>
+</div>

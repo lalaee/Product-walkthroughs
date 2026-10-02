@@ -1,0 +1,28 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="24" height="17" viewBox="0 0 24 17" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Group 2">
+<circle id="Ellipse 7" cx="7" cy="7" r="7" fill="url(#paint0_linear_0_78)"/>
+<g id="weather" filter="url(#filter0_i_0_78)">
+<path id="Union" fill-rule="evenodd" clip-rule="evenodd" d="M18 17H4.5H4V16.9725C1.75002 16.7238 0 14.8163 0 12.5C0 10.0147 2.01472 8 4.5 8C4.66903 8 4.83587 8.00932 5.00006 8.02747L5 8C5 4.68629 7.68629 2 11 2C13.3171 2 15.3274 3.31341 16.327 5.23634C16.858 5.08247 17.4194 5 18 5C21.3137 5 24 7.68629 24 11C24 14.3137 21.3137 17 18 17Z" fill="url(#paint1_linear_0_78)"/>
+</g>
+</g>
+<defs>
+<filter id="filter0_i_0_78" x="0" y="2" width="25" height="16" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+<feOffset dx="2" dy="2"/>
+<feGaussianBlur stdDeviation="0.5"/>
+<feComposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1"/>
+<feColorMatrix type="matrix" values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1 0"/>
+<feBlend mode="normal" in2="shape" result="effect1_innerShadow_0_78"/>
+</filter>
+<linearGradient id="paint0_linear_0_78" x1="0" y1="0" x2="6.5" y2="6.5" gradientUnits="userSpaceOnUse">
+<stop stop-color="#FAE26F"/>
+<stop offset="1" stop-color="#F7BC3D"/>
+</linearGradient>
+<linearGradient id="paint1_linear_0_78" x1="6.04167" y1="11.2" x2="12.9522" y2="19.8382" gradientUnits="userSpaceOnUse">
+<stop stop-color="white"/>
+<stop offset="1" stop-color="#BDE0F5"/>
+</linearGradient>
+</defs>
+</svg>

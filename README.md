@@ -131,6 +131,12 @@ an analysis finishing. `record.mjs` cuts them from the video, keeping 0.4 s at e
 every timestamp after them. Shortcuts pressed with `d.press('Control+Shift+2')` are logged, so
 Recordly shows them as keycaps.
 
+A desktop flow can set the desktop behind its windows with `export const background`, an image or
+an HTML page rendered at the screen's size. `desktops/windows11/` is a Windows 11 desktop: the
+Bloom wallpaper and the dark taskbar, built from the Windows 11 UI Kit (Community) on Figma, with
+the kit's own icons. Windows have no decorations from the window manager; apps draw their own title
+bars. `flows/recordly-windows.mjs` gives its Taskly window a Windows 11 one.
+
 If a flow fails, `failure.png` is the screen at that moment, and the Recordly flow keeps
 Recordly's log in `recordly.log`.
 
@@ -168,6 +174,11 @@ zoom. Hold after a click that changes the screen, so the viewer sees what happen
   while it records, stop with Ctrl+Shift+2, land in the editor with zooms suggested from the clicks,
   trim off the start, and play it back. 38 s, 60 fps, reviewed and fixed (all 15 actions in view,
   peak zoom speed 3.0 doublings/s); contact sheet `videos/recordly-record-review.png`.
+- `videos/recordly-windows.mp4`: Recordly on a Windows 11 desktop, starting from its recorder bar,
+  with Taskly already open. Record, hide the bar, create a project in Taskly, stop with
+  Ctrl+Shift+2, then in the editor trim the start, point out the suggested zoom and play it back.
+  37 s, 1920×1080 at 60 fps, reviewed and fixed (all 14 actions in view); contact sheet
+  `videos/recordly-windows-review.png`.
 - `videos/demo-taskly.mp4`: the pipeline on the bundled demo page (`demo-app/`): create a project,
   open it, add two tasks, tick one off. 27 s, 1080p60, smooth motion, reviewed and fixed (all
   11 actions in view, peak zoom speed 2.6 doublings/s); its contact sheet is `videos/demo-taskly-review.png`.

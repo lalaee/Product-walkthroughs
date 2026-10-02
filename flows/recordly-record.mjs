@@ -9,6 +9,7 @@ import {join} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {chromium} from 'playwright-core';
 import {launchRecordly} from '../walkthrough/lib/recordly.mjs';
+import {finishInEditor, recordTaskly} from './recordly-steps.mjs';
 
 export const name = 'Recordly — record your screen';
 export const desktop = true;
@@ -54,49 +55,12 @@ export async function launch({env, desktop, out, width, height, scale, recordly}
 }
 
 /** @param {import('../walkthrough/lib/director.mjs').Director} d */
-export async function run(d, {main, overlay, taskly}) {
+export async function run(d, ctx) {
+  const {main, overlay} = ctx;
   const bar = [overlay.getByRole('button', {name: /^Move recorder/}), overlay.getByRole('button', {name: 'More recorder options'})];
   await d.point(main.getByText('Record your first video'), {hold: 900});
   await d.click(main.getByRole('button', {name: 'New recording'}).last(), {hold: 1300, show: bar, label: 'New recording'});
   await d.point(overlay.getByRole('button', {name: /^Countdown/}), {hold: 1100, show: bar, label: 'the recorder bar', zoom: 1.8});
-  await d.click(overlay.getByRole('button', {name: 'Record', exact: true}), {hold: 300, show: overlay.getByText('Recording your screen'), label: 'Record'});
-
-  // On Linux the recorder bar would be in the recording: hide it as soon as recording starts
-  // (Ctrl+Shift+2 stops it later). Recordly records from here; what it caught of the bar is trimmed
-  // off in the editor.
-  const hide = overlay.getByRole('button', {name: 'Hide controls'});
-  await hide.waitFor({timeout: 15_000});
-  const recStart = Date.now();
-  await d.click(hide, {hold: 500, label: 'Hide controls'});
-  const trimAt = Math.ceil(((Date.now() - recStart) / 1000 + 0.3) * 10) / 10;
-
-  // what's being recorded
-  await d.click(taskly.locator('#new-project'), {hold: 900, show: taskly.locator('.dialog')});
-  await d.type(taskly.locator('#name'), 'Product launch');
-  await d.click(taskly.locator('#create'), {hold: 1500, show: taskly.locator('.card.new')});
-  await d.press('Control+Shift+2', {hold: 300, label: 'Stop (Ctrl+Shift+2)'});
-
-  // Recordly opens the editor and analyses the recording: a wait, cut from the video
-  const zoom = main.getByRole('button', {name: /Auto \(follows cursor\)|Manual focus/}).first();
-  const suggested = await d.idle(() => zoom.waitFor({timeout: 8_000}).then(() => true, () => false));
-  if (!suggested) {
-    // now and then Recordly doesn't suggest them on its own; then ask, as a person would
-    await d.click(main.getByRole('button', {name: 'Suggest zooms'}).first(), {hold: 900, show: zoom, label: 'Suggest zooms'});
-    await d.idle(() => zoom.waitFor({timeout: 15_000}));
-  }
-  await d.wait(800);
-
-  // trim the start: playhead past the bar, split there, delete the first part
-  // (its labels read 0:00.0 or 0:00, depending on how far the timeline is zoomed)
-  const z0 = await d.s.box(main.getByText(/^0:00(\.0)?$/).last());
-  const z1 = await d.s.box(main.getByText(/^0:01(\.0)?$/).last());
-  const ruler = {x: Math.round(z0.x + (z1.x - z0.x) * trimAt + 1), y: Math.round(z0.y + z0.h / 2)};
-  await d.click(ruler, {hold: 600, label: `the ruler at ${trimAt} s`});
-  await d.click(main.getByRole('button', {name: /^Split clip/}), {hold: 700, label: 'Split clip at playhead'});
-  await d.click(main.getByRole('button', {name: /^Clip 1:/}).first(), {hold: 600, label: 'the first part'});
-  await d.click(main.getByRole('button', {name: /^Delete selected/}), {hold: 1000, show: main.getByRole('button', {name: /^Clip 1:/}).first(), label: 'Delete selected'});
-
-  await d.point(zoom, {hold: 1600, show: zoom, label: 'the suggested zoom', zoom: 2});
-  const preview = main.locator('canvas[aria-label=Preview]');
-  await d.click(main.getByRole('button', {name: 'Play', exact: true}), {hold: 7000, show: preview, label: 'Play', zoom: 1.6});
+  const trimAt = await recordTaskly(d, ctx);
+  await finishInEditor(d, ctx, trimAt);
 }

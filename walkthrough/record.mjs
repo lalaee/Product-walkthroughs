@@ -7,6 +7,8 @@
 // Writes <out>/library: a Recordly recordings folder holding the recording and a project for it.
 // Render it with walkthrough/render.mjs.
 //
+// A desktop flow may export `background`: an image or an HTML page (relative to the flow) for the
+// desktop behind its windows, e.g. '../desktops/windows11/desktop.html'.
 // A flow may also export `size` ('1440x900'), `scale` (pixel density, 2 for Retina; --scale) and `aspect` (Recordly's video shape for the finished
 // video: '1:1', '16:9', '9:16'…; render.mjs picks it).
 //
@@ -18,7 +20,7 @@
 // director uses real input.
 import {spawn, execFileSync} from 'node:child_process';
 import {mkdirSync, rmSync, writeFileSync} from 'node:fs';
-import {basename, join, resolve} from 'node:path';
+import {basename, dirname, join, resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {chromium} from 'playwright-core';
 import {Director} from './lib/director.mjs';
@@ -57,7 +59,7 @@ mkdirSync(folder, {recursive: true});
 let target;
 if (flow.desktop) {
   // A whole desktop: the flow launches its apps (flow.launch) and the director uses real input.
-  const desk = await startDesktop({width: pw, height: ph});
+  const desk = await startDesktop({width: pw, height: ph, scale, background: flow.background && resolve(dirname(resolve(flowPath)), flow.background)});
   process.env.DISPLAY = desk.display; // for the native module's X connection
   const recordly = recordlyDir(arg('recordly'));
   const surface = new DesktopSurface({display: desk.display, native: recordlyNative(recordly), scale});
