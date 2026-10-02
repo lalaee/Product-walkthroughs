@@ -153,6 +153,25 @@ function check(d) {
 }
 let results = check(doc);
 
+// ---------------------------------------------------------------- motion
+// How hard the camera moves: zoom speed in "doublings per second" (log scale, so 1×→2× and 2×→4×
+// count the same) and pan speed in screen widths per second, both seen at the zoomed-in scale.
+function motionOf(d) {
+  const dt = 1 / 60, end = Math.max(...beats.map(b => b.end)) + 1;
+  let zoom = {v: 0, s: 0}, pan = {v: 0, s: 0}, prev = viewAt(0, d);
+  for (let s = dt; s < end; s += dt) {
+    const v = viewAt(s, d);
+    const z = Math.abs(Math.log2(v.amount) - Math.log2(prev.amount)) / dt;
+    const p = Math.hypot(v.x + v.w / 2 - (prev.x + prev.w / 2), v.y + v.h / 2 - (prev.y + prev.h / 2)) / v.w / dt;
+    if (z > zoom.v) zoom = {v: z, s};
+    if (p > pan.v && Math.abs(v.amount - prev.amount) < 1e-6) pan = {v: p, s};
+    prev = v;
+  }
+  return {zoom, pan};
+}
+const MAX_ZOOM_SPEED = 3; // doublings per second
+const MAX_PAN_SPEED = 1.2; // view widths per second
+
 // ---------------------------------------------------------------- contact sheet
 const dir = join(out, 'review');
 rmSync(dir, {recursive: true, force: true});
@@ -197,7 +216,11 @@ await browser.close();
 
 // ---------------------------------------------------------------- report and fix
 const failing = results.filter(r => r.problems.length);
-const lines = [`# Review: ${project.name}`, '', `${results.length} beats, ${doc.zooms.length} zooms, ${failing.length} beats need attention.`, ''];
+const m = motionOf(doc);
+const harsh = [];
+if (m.zoom.v > MAX_ZOOM_SPEED) harsh.push(`camera zooms too sharply at ${m.zoom.s.toFixed(1)} s (${m.zoom.v.toFixed(1)} doublings/s, at most ${MAX_ZOOM_SPEED}); try --motion smooth`);
+if (m.pan.v > MAX_PAN_SPEED) harsh.push(`camera pans too fast at ${m.pan.s.toFixed(1)} s (${m.pan.v.toFixed(1)} view widths/s, at most ${MAX_PAN_SPEED})`);
+const lines = [`# Review: ${project.name}`, '', `${results.length} beats, ${doc.zooms.length} zooms (${doc.motion?.preset} motion), ${failing.length} beats need attention.`, `Motion: peak zoom speed ${m.zoom.v.toFixed(1)} doublings/s at ${m.zoom.s.toFixed(1)} s, peak pan ${m.pan.v.toFixed(1)} view widths/s at ${m.pan.s.toFixed(1)} s.${harsh.map(h => `\n- ✗ ${h}`).join('')}`, ''];
 for (const r of results) lines.push(`- ${r.problems.length ? '✗' : '✓'} ${String(r.i + 1).padStart(2, '0')} ${r.beat.action} ${r.beat.label} (${r.beat.t.toFixed(1)} s)${r.problems.map(p => `\n  - ${p}`).join('')}`);
 
 if (fix && failing.length) {
@@ -230,4 +253,4 @@ if (fix && failing.length) {
 writeFileSync(join(dir, 'report.md'), lines.join('\n') + '\n');
 console.log(lines.join('\n'));
 console.log(`\ncontact sheet: ${join(dir, 'sheet.png')}`);
-process.exitCode = failing.length && !fix ? 1 : 0;
+process.exitCode = (failing.length && !fix) || harsh.length ? 1 : 0;

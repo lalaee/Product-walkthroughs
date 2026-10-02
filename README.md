@@ -55,6 +55,9 @@ click. `review.mjs` checks every action in the video:
 - **The check.** Around the moment of each action the target has to be in view, with up to 15%
   allowed to be clipped while the camera arrives. Over the second half of the action, the target
   and its result have to be fully in view.
+- **Motion.** It fails if the camera zooms faster than 3 doublings per second or pans faster than 1.2
+  view widths per second. The focused preset peaks around 12 doublings per second; smooth stays
+  under 3.
 - **The flow.** It fails if a `show` target never appeared, or if a click, typing or key press
   changed nothing on screen. Either means the flow didn't do what it meant to.
 
@@ -68,9 +71,15 @@ the action). It's followed by frames from the finished video at the action, midw
 numbers catch framing; the sheet is for what they can't catch, like the wrong state, a result that
 appears too late, or motion blur on the frame that matters.
 
-`record.mjs` takes `--size 1920x1080` and `--fps 60`. `render.mjs` takes `--motion focused|smooth`
-(Recordly's zoom presets: focused = more, shorter, tighter zooms), `--quality original|high|standard`
-and `--fps 60|30`. It also saves `editor.png`, a screenshot of Recordly's timeline, so you can check
+`record.mjs` takes `--size 1920x1080` and `--fps 60`. `render.mjs` takes `--motion smooth|focused`,
+`--quality original|high|standard` and `--fps 60|30`. The motion setting picks one of Recordly's
+zoom presets:
+
+- **smooth** (the default): 1.1 s eased in-out camera moves and fewer, longer zooms.
+- **focused**: 0.45 s snappy moves and more, tighter zooms. These read as sharp.
+
+Recordly suggests zooms once, when it first opens a project, so add `--fresh` to redo them after
+changing `--motion`. That also discards earlier review fixes. It also saves `editor.png`, a screenshot of Recordly's timeline, so you can check
 where the zooms landed.
 
 To re-render with other settings, run `render.mjs` again. The recording is kept, so there's no need
@@ -103,5 +112,5 @@ zoom. Hold after a click that changes the screen, so the viewer sees what happen
 ## Videos
 
 - `videos/demo-taskly.mp4`: the pipeline on the bundled demo page (`demo-app/`): create a project,
-  open it, add two tasks, tick one off. 27 s, 1080p60, reviewed and fixed (all 11 actions in
-  view); its contact sheet is `videos/demo-taskly-review.png`.
+  open it, add two tasks, tick one off. 27 s, 1080p60, smooth motion, reviewed and fixed (all
+  11 actions in view, peak zoom speed 2.6 doublings/s); its contact sheet is `videos/demo-taskly-review.png`.

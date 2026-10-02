@@ -1,12 +1,16 @@
 // Turns a recording made by record.mjs into the finished video with Recordly: opens its project,
 // lets Recordly suggest zooms from the clicks and pauses, and exports an MP4 with its own exporter.
 //
-//   node walkthrough/render.mjs out/<flow> [--motion focused|smooth] [--quality original|high|standard]
+//   node walkthrough/render.mjs out/<flow> [--motion smooth|focused] [--fresh] [--quality original|high|standard]
 //                               [--fps 60|30] [--recordly ../recorder-2]
 //
 // Needs Recorder-2 cloned and built (npm ci && npm run build:native && npm run build).
+// Motion is Recordly's zoom preset: smooth (default) = 1.1 s eased in-out camera moves, fewer and
+// longer zooms; focused = 0.45 s snappy moves, more and tighter zooms. Recordly suggests zooms
+// once, when it first opens a project; --fresh discards the saved edit (and any review fixes) so it
+// suggests again, e.g. after changing --motion.
 // Writes <out>/<flow>.mp4 and <out>/editor.png (the editor's timeline, to check the zooms).
-import {mkdtempSync, readdirSync, renameSync, statSync, writeFileSync} from 'node:fs';
+import {mkdtempSync, readFileSync, readdirSync, renameSync, statSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {basename, join, resolve} from 'node:path';
 import {_electron as electron} from 'playwright-core';
@@ -25,10 +29,18 @@ const out = resolve(outArg);
 const library = join(out, 'library');
 const recordly = resolve(arg('recordly', process.env.RECORDLY_DIR ?? join(import.meta.dirname, '..', '..', 'recorder-2')));
 const desktop = join(recordly, 'apps', 'desktop');
-const motion = arg('motion', 'focused');
+const motion = arg('motion', 'smooth');
 const quality = arg('quality', 'original');
 const fps = arg('fps', '60');
-const project = readdirSync(join(library, 'Projects')).find(f => f.endsWith('.recordly')).replace(/\.recordly$/, '');
+const projectFile = join(library, 'Projects', readdirSync(join(library, 'Projects')).find(f => f.endsWith('.recordly')));
+const project = basename(projectFile).replace(/\.recordly$/, '');
+const saved = JSON.parse(readFileSync(projectFile, 'utf8'));
+if (process.argv.includes('--fresh') && saved.doc) {
+  delete saved.doc;
+  writeFileSync(projectFile, JSON.stringify(saved));
+} else if (saved.doc && saved.doc.motion?.preset !== motion) {
+  console.warn(`note: the project's zooms were made with the ${saved.doc.motion?.preset} preset; add --fresh to redo them as ${motion}`);
+}
 
 const userData = mkdtempSync(join(tmpdir(), 'recordly-render-'));
 const downloads = mkdtempSync(join(tmpdir(), 'recordly-export-'));
