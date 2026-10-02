@@ -7,14 +7,14 @@ export const url = pathToFileURL(new URL('../demo-app/index.html', import.meta.u
 /** @param {import('../walkthrough/lib/director.mjs').Director} d */
 export async function run(d, page) {
   await d.point('h2:has-text("Projects")', {hold: 900});
-  await d.click('#new-project', {hold: 900});
+  await d.click('#new-project', {hold: 900, show: '.dialog'});
   await d.type('#name', 'Product launch');
   await d.type('#desc', 'Everything we need for the October launch.');
-  await d.click('#create', {hold: 1400});
-  await d.click('.card.new', {hold: 1000});
+  await d.click('#create', {hold: 1400, show: '.card.new'});
+  await d.click('.card.new', {hold: 1000, show: ['#project-title', '.add']});
   await d.type('#task-input', 'Write the announcement post');
-  await d.press('Enter');
+  await d.press('Enter', {show: '#tasks'});
   await d.type('#task-input', 'Record the walkthrough video');
-  await d.press('Enter', {hold: 800});
-  await d.click(page.locator('.task').first().locator('input'), {hold: 1800});
+  await d.press('Enter', {hold: 800, show: '#tasks'});
+  await d.click(page.locator('.task').first().locator('input'), {hold: 1800, show: page.locator('.task').first(), label: 'tick the first task'});
 }

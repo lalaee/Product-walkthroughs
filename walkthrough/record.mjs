@@ -117,5 +117,8 @@ mkdirSync(join(library, 'Projects'));
 const now = new Date().toISOString();
 writeFileSync(join(library, 'Projects', `${recName}.recordly`), JSON.stringify({format: 'recordly-project', version: 1, id: `p-${slug}`, name: recName, created: now, edited: now, duration: durationSec, folders: [], recordingIds: [id]}));
 
+// the beats, in seconds from the start of the video, for review.mjs
+const sec = t => +((t - startedAt) / 1000).toFixed(3);
+writeFileSync(join(out, 'beats.json'), JSON.stringify({width, height, beats: d.beats.map(b => ({...b, t: sec(b.t), end: sec(b.end ?? b.t)}))}, null, 2));
 const clicks = lines.filter(l => l.click === 'down').length;
 console.log(`recorded ${durationSec.toFixed(1)} s, ${clicks} clicks → ${library}`);

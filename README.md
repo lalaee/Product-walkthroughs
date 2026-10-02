@@ -35,7 +35,38 @@ Playwright Chromium in `/opt/pw-browsers`).
 ```sh
 node walkthrough/record.mjs flows/demo-taskly.mjs     # → out/demo-taskly/library
 node walkthrough/render.mjs out/demo-taskly           # → out/demo-taskly/demo-taskly.mp4
+node walkthrough/review.mjs out/demo-taskly --fix     # check every zoom, fix the ones that hide the action
+node walkthrough/render.mjs out/demo-taskly           # render with the fixed zooms
+node walkthrough/review.mjs out/demo-taskly           # must pass; then look at review/sheet.png
 ```
+
+## Review: frame by frame
+
+Recordly zooms to 2.4× on clicks, which can crop a dialog, a wide form field or the result of a
+click. `review.mjs` checks every action in the video:
+
+- **What the viewer needs to see.** The flow records each action as a beat in `beats.json`: what
+  was clicked, typed into or pressed, and where. What should be visible afterwards comes from the
+  flow's `show` hint, or else from the region of the raw recording that changed during the action.
+- **What the camera shows.** Recordly's own camera and cursor code is bundled from Recorder-2's
+  source and run against the zooms Recordly saved in the project. That includes its ramps, its
+  glides between connected zooms and its cursor follow, so this is the view the exporter draws,
+  sampled every 50 ms.
+- **The check.** Around the moment of each action the target has to be in view, with up to 15%
+  allowed to be clipped while the camera arrives. Over the second half of the action, the target
+  and its result have to be fully in view.
+- **The flow.** It fails if a `show` target never appeared, or if a click, typing or key press
+  changed nothing on screen. Either means the flow didn't do what it meant to.
+
+`--fix` turns each failing zoom into a manual zoom centred on everything its actions need, at the
+most it can zoom while still showing all of it, or removes it if that's under 1.3×. It re-checks
+the camera after each change until every beat passes, then saves the project for a re-render.
+
+`review/sheet.png` is a contact sheet with one row per action. The first frame is the raw
+recording, with the needed area in green and the camera's view in blue (dashed at the moment of
+the action). It's followed by frames from the finished video at the action, midway and after. The
+numbers catch framing; the sheet is for what they can't catch, like the wrong state, a result that
+appears too late, or motion blur on the frame that matters.
 
 `record.mjs` takes `--size 1920x1080` and `--fps 60`. `render.mjs` takes `--motion focused|smooth`
 (Recordly's zoom presets: focused = more, shorter, tighter zooms), `--quality original|high|standard`
@@ -53,13 +84,17 @@ A flow is a module in `flows/` that exports `name`, `url` and `run(d, page)`, an
 
 | Call | What it does |
 |---|---|
-| `d.click(target, {hold})` | travel to the target, click, hold `hold` ms (default 700) |
+| `d.click(target, {hold, show})` | travel to the target, click, hold `hold` ms (default 700) |
 | `d.type(target, text)` | click a field and type at a readable pace |
 | `d.press(key)` | press a key (Enter, Tab…) |
 | `d.point(target, {hold})` | hover something long enough for a soft zoom (default 1200 ms) |
 | `d.moveTo(target)` / `d.wait(ms)` | travel without clicking / pause |
 
-Targets are CSS selectors, Playwright locators or `{x, y}`.
+Targets are CSS selectors, Playwright locators or `{x, y}`. Every action takes `show`, a selector
+or locator (or a list of them) for what the viewer should see once it has played out, such as the
+dialog a button opens. The review keeps that in frame and fails the flow if it never appears.
+Without `show`, it uses whatever changed on screen, which is too much when a dialog dims the whole
+page. `label` names the action in the review.
 
 Pacing is what shapes the zooms. Recordly zooms in on each click, and on each "settle", where the
 pointer moves and then rests for about 0.8 s. Clicks less than about 2 s apart merge into one longer
@@ -68,4 +103,5 @@ zoom. Hold after a click that changes the screen, so the viewer sees what happen
 ## Videos
 
 - `videos/demo-taskly.mp4`: the pipeline on the bundled demo page (`demo-app/`): create a project,
-  open it, add two tasks, tick one off. 27 s, 1080p60.
+  open it, add two tasks, tick one off. 27 s, 1080p60, reviewed and fixed (all 11 actions in
+  view); its contact sheet is `videos/demo-taskly-review.png`.

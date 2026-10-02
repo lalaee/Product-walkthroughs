@@ -5,6 +5,11 @@
 //
 // Pacing matters for the zooms: Recordly zooms in on clicks, and on "settles" (the pointer moved,
 // then stayed put for ~0.8 s). Clicks closer than ~2 s apart merge into one longer zoom.
+//
+// Each action is also written down as a "beat" (what it was, when, and where on the page its target
+// and result are) so review.mjs can check every zoom against what the viewer needs to see. Pass
+// `show` (a selector or locator) to say what the viewer should see after an action, e.g. the dialog
+// a button opens; without it the review works it out from what changed on screen.
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const ease = t => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
@@ -15,7 +20,33 @@ export class Director {
     this.page = page;
     this.origin = origin;
     this.log = [];
+    this.beats = [];
     this.pos = null;
+  }
+
+  /** Boxes of the `show` targets, noting any that aren't on screen. */
+  async #shows(beat, show) {
+    const list = [show].flat();
+    const boxes = await Promise.all(list.map(s => this.#box(s)));
+    beat.show = boxes.filter(Boolean);
+    const missing = list.filter((_, i) => !boxes[i]).map(String);
+    if (missing.length) beat.showMissing = missing.join(', ');
+  }
+
+  async #box(target) {
+    if (typeof target === 'string') target = this.page.locator(target);
+    const b = await target.first().boundingBox({timeout: 1000}).catch(() => null);
+    return b && {x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.width), h: Math.round(b.height)};
+  }
+
+  /** Notes an action for the review: its target's box now, the `show` boxes once it has played out. */
+  async #beat(action, label, target, t, show) {
+    const beat = {action, label: label ?? (typeof target === 'string' ? target : String(target)), t, target: target && typeof target === 'object' && 'x' in target && !('boundingBox' in target) ? {x: target.x - 4, y: target.y - 4, w: 8, h: 8} : target ? await this.#box(target) : null};
+    this.beats.push(beat);
+    return async () => {
+      beat.end = Date.now();
+      if (show) await this.#shows(beat, show);
+    };
   }
 
   #write(entry) {
@@ -64,33 +95,45 @@ export class Director {
   }
 
   /** Moves to the target and clicks it, then holds for `hold` ms so the viewer sees the result. */
-  async click(target, {hold = 700} = {}) {
+  async click(target, {hold = 700, show, label} = {}) {
+    const done = await this.#beat('click', label, target, null, show);
     const p = await this.moveTo(target);
     await sleep(140);
+    this.beats.at(-1).t ??= Date.now();
     this.#write({click: 'down', button: 0, x: p.x + this.origin.x, y: p.y + this.origin.y});
     await this.page.mouse.down();
     await sleep(70);
     await this.page.mouse.up();
     this.#write({click: 'up', button: 0, x: p.x + this.origin.x, y: p.y + this.origin.y});
     await sleep(hold);
+    await done();
   }
 
   /** Clicks a field and types into it at a readable pace. */
-  async type(target, text, {delay = 55, hold = 500} = {}) {
-    await this.click(target, {hold: 250});
+  async type(target, text, {delay = 55, hold = 500, show, label} = {}) {
+    await this.click(target, {hold: 250, label: label ?? `type "${text}"`});
+    const beat = this.beats.at(-1);
+    beat.action = 'type';
     await this.page.keyboard.type(text, {delay});
     await sleep(hold);
+    beat.end = Date.now();
+    beat.target = (await this.#box(target)) ?? beat.target;
+    if (show) await this.#shows(beat, show);
   }
 
-  async press(key, {hold = 600} = {}) {
+  async press(key, {hold = 600, show, label} = {}) {
+    const done = await this.#beat('press', label ?? `press ${key}`, null, Date.now(), show);
     await this.page.keyboard.press(key);
     await sleep(hold);
+    await done();
   }
 
   /** Hovers over something long enough to count as a settle (a soft zoom). */
-  async point(target, {hold = 1200} = {}) {
+  async point(target, {hold = 1200, show, label} = {}) {
     await this.moveTo(target);
+    const done = await this.#beat('point', label, target, Date.now(), show);
     await sleep(hold);
+    await done();
   }
 
   wait(ms) {
