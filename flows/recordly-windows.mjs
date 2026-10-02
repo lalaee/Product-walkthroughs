@@ -1,9 +1,10 @@
-// Recordly on a Windows 11 desktop, starting from its recorder bar: Taskly is already open in a
-// window, the bar is up. Record a short Taskly session, stop with the shortcut, and finish it in the
-// editor (trim the start, point out the suggested zoom, play it back).
+// How to record on Windows with Recordly, as a tutorial from start to finish: from Recordly's home,
+// open the recorder, choose what to record (the whole screen), record a short Taskly session, stop
+// with the shortcut, check the zoom Recordly suggested, play it back and export the video.
 //
 // The desktop is the Windows 11 UI Kit's (desktops/windows11). Runs Recordly (Recorder-2) for real,
-// with real input (a desktop flow, see walkthrough/record.mjs).
+// with real input (a desktop flow, see walkthrough/record.mjs), its interface as it is on Windows
+// (launchRecordly's `platform`): this machine runs Linux underneath.
 import {mkdirSync, mkdtempSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
@@ -12,7 +13,7 @@ import {chromium} from 'playwright-core';
 import {launchRecordly} from '../walkthrough/lib/recordly.mjs';
 import {finishInEditor, recordTaskly} from './recordly-steps.mjs';
 
-export const name = 'Recordly — record on Windows';
+export const name = 'Recordly — how to record on Windows';
 export const desktop = true;
 export const size = '1920x1080';
 export const aspect = '16:9';
@@ -22,14 +23,14 @@ export const background = '../desktops/windows11/desktop.html';
 export const plan = {
   what: 'Recordly records your screen and turns it into a polished video, zooming in where you clicked.',
   audience: 'People who make product demos and walkthroughs on Windows.',
-  flow: ['The recorder bar is up over Taskly, open on the desktop', 'Record: 3, 2, 1', 'Create a project in Taskly while it records', 'Stop with Ctrl+Shift+2', 'Recordly has already suggested a zoom from the clicks', 'Play it back'],
-  duration: [15, 25],
-  milestones: [{beat: 'Record', by: 7}, {beat: 'Stop (Ctrl+Shift+2)', by: 18}, {beat: 'Play', by: 23}]
+  flow: ['Recordly is open; Taskly is the app to record', 'New recording: the recorder bar', 'Choose what to record: the entire screen', 'Record: 3, 2, 1', 'Create a project in Taskly while it records', 'Stop with Ctrl+Shift+2', 'Recordly has already suggested a zoom from the clicks', 'Play it back', 'Export: the MP4 is ready'],
+  duration: [30, 50],
+  milestones: [{beat: 'Record', by: 12}, {beat: 'Stop (Ctrl+Shift+2)', by: 26}, {beat: 'Export', by: 40}]
 };
 export const lead = 400;
-// the poster: the playback, zoomed in
-export const poster = 'Play';
-export const share = 'Hit Record, use your app, press Ctrl+Shift+2. Recordly hands it back already zoomed in on every click.';
+// the poster: the finished video, exported
+export const poster = 'Save';
+export const share = 'Recording on Windows with Recordly: New recording, pick your screen, hit Record, use your app, press Ctrl+Shift+2. It comes back already zoomed in on every click; export and you are done.';
 
 const taskly = pathToFileURL(new URL('../demo-app/index.html', import.meta.url).pathname).href;
 const TASKBAR = 48;
@@ -54,17 +55,17 @@ export async function launch({env, desktop, out, width, height, recordly}) {
   const library = join(out, 'recordly-library');
   rmSync(library, {recursive: true, force: true});
   mkdirSync(library, {recursive: true});
-  const rec = await launchRecordly({dir: recordly, env, library, settings: {hideRecorder: false}});
+  const downloads = join(out, 'recordly-exports');
+  rmSync(downloads, {recursive: true, force: true});
+  mkdirSync(downloads, {recursive: true});
+  const rec = await launchRecordly({dir: recordly, env, library, downloads, platform: 'win', settings: {hideRecorder: false}});
   const main = await rec.window('main');
   desktop.register(main, rec.origin(main));
   await (await rec.app.browserWindow(main)).evaluate((w, b) => w.setBounds(b), {x: 0, y: 0, width, height: height - TASKBAR});
   const overlay = await rec.window('overlay');
   desktop.register(overlay, rec.origin(overlay));
-  // before recording starts: open the recorder bar (the main window steps aside)
-  await main.getByRole('button', {name: 'New recording'}).last().click();
-  await overlay.getByRole('button', {name: 'Record', exact: true}).waitFor();
-  await page.bringToFront();
-  await page.waitForTimeout(1500);
+  await main.getByRole('button', {name: 'New recording'}).last().waitFor();
+  await main.waitForTimeout(1500);
 
   return {
     main, overlay, taskly: page,
@@ -96,9 +97,23 @@ function windowsTitleBar(title) {
 
 /** @param {import('../walkthrough/lib/director.mjs').Director} d */
 export async function run(d, ctx) {
-  const {overlay, taskly} = ctx;
-  const bar = [overlay.getByRole('button', {name: /^Move recorder/}), overlay.getByRole('button', {name: 'More recorder options'})];
-  await d.point(overlay.getByRole('button', {name: /^Countdown/}), {hold: 1000, show: bar, label: 'the recorder bar', zoom: 1.8});
+  const {main, overlay} = ctx;
+  // 1. the recorder: Recordly's window steps aside and its bar comes up
+  const bar = overlay.locator('[aria-label="Recorder"]');
+  await d.click(main.getByRole('button', {name: 'New recording'}).last(), {hold: 1000, show: bar, label: 'New recording'});
+  // 2. what to record: the entire screen
+  const picker = overlay.getByRole('dialog');
+  await d.click(overlay.getByRole('button', {name: 'Choose what to record'}), {hold: 1500, show: picker, label: 'Choose what to record'});
+  await d.click(picker.getByText('Entire screen'), {hold: 1000, show: bar, label: 'Entire screen'});
+  // 3. record Taskly, stop
   const trimAt = await recordTaskly(d, ctx);
+  // 4. in the editor: the suggested zoom, playback
   await finishInEditor(d, ctx, trimAt);
+  // 5. export
+  const dialog = main.getByRole('dialog');
+  await d.click(main.getByRole('button', {name: 'Export', exact: true}).first(), {hold: 1200, show: dialog, label: 'Export'});
+  await d.click(dialog.getByRole('button', {name: /^Export MP4$/}), {hold: 300, label: 'Export MP4'});
+  // (the export takes a while on this machine: a moment of its progress, then it's done)
+  await d.idle(() => dialog.getByRole('button', {name: 'Save'}).waitFor({timeout: 10 * 60_000}), {keep: 800});
+  await d.click(dialog.getByRole('button', {name: 'Save'}), {hold: 2200, show: dialog.getByText('Your video is ready'), label: 'Save', zoom: 1.6});
 }

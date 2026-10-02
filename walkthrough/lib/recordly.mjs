@@ -20,8 +20,13 @@ export function recordlyNative(dir) {
  * Launches Recordly with a fresh profile, already onboarded, its recordings folder at `library`.
  * Returns the app, a lookup for its windows by kind ('main', 'overlay'), and where a window's content
  * sits on screen.
+ *
+ * `platform` ('win' or 'mac') runs Recordly's interface as it is on that system: Recordly reads the
+ * platform once, in its preload, so a preload of ours that runs first reports that one. Only the
+ * interface follows (on Windows: the recorder's own screen and window picker, Windows window
+ * buttons); everything underneath still runs on this machine.
  */
-export async function launchRecordly({dir, env = process.env, library, motion = 'smooth', settings = {}, recorder = {}, downloads, scale}) {
+export async function launchRecordly({dir, env = process.env, library, motion = 'smooth', settings = {}, recorder = {}, downloads, scale, platform}) {
   const userData = mkdtempSync(join(tmpdir(), 'recordly-profile-'));
   writeFileSync(
     join(userData, 'state.json'),
@@ -44,6 +49,13 @@ export async function launchRecordly({dir, env = process.env, library, motion = 
   app.on('window', w => w.on('console', m => log.push(`[${m.type()}] ${m.text()}\n`)));
   for (const w of app.windows()) w.on('console', m => log.push(`[${m.type()}] ${m.text()}\n`));
   if (downloads) await app.evaluate(({app}, dir) => app.setPath('downloads', dir), downloads);
+  if (platform) {
+    const preload = join(userData, 'platform-preload.cjs');
+    writeFileSync(preload, `Object.defineProperty(process, 'platform', {value: ${JSON.stringify({win: 'win32', mac: 'darwin'}[platform])}});\n`);
+    await app.evaluate(({session}, filePath) => session.defaultSession.registerPreloadScript({type: 'frame', filePath}), preload);
+    // the windows that are already open load again, with it
+    for (const w of app.windows()) await w.reload().catch(() => {});
+  }
 
   /** The window of a kind, once it exists. */
   async function window(kind, timeout = 30_000) {
