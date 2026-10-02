@@ -66,8 +66,9 @@ const KEYS = {Control: 'ctrl', Ctrl: 'ctrl', Shift: 'shift', Alt: 'alt', Meta: '
  */
 export class DesktopSurface {
   /** @param {{display: string, native?: {cursorKind?: () => string | null}}} opts */
-  constructor({display, native}) {
+  constructor({display, native, scale = 1}) {
     this.env = {...process.env, DISPLAY: display};
+    this.scale = scale; // pixels per point: xdotool works in pixels, everything else in points
     this.native = native;
     this.origins = new Map();
   }
@@ -80,7 +81,7 @@ export class DesktopSurface {
     execFileSync('xdotool', args.map(String), {env: this.env});
   }
   move(x, y) {
-    this.#x('mousemove', x, y);
+    this.#x('mousemove', Math.round(x * this.scale), Math.round(y * this.scale));
   }
   down() {
     this.#x('mousedown', 1);

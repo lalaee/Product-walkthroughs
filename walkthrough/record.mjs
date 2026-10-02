@@ -7,7 +7,7 @@
 // Writes <out>/library: a Recordly recordings folder holding the recording and a project for it.
 // Render it with walkthrough/render.mjs.
 //
-// A flow may also export `size` ('1440x900') and `aspect` (Recordly's video shape for the finished
+// A flow may also export `size` ('1440x900'), `scale` (pixel density, 2 for Retina; --scale) and `aspect` (Recordly's video shape for the finished
 // video: '1:1', '16:9', '9:16'…; render.mjs picks it).
 //
 // Two kinds of flow. A page flow exports `url` (and optionally `setup(page)`): the app runs in a
@@ -41,6 +41,11 @@ const out = resolve(arg('out', join('out', slug)));
 // the screen size: --size, else the flow's own `size`, else 1920x1080
 const [width, height] = arg('size', flow.size ?? '1920x1080').split('x').map(Number);
 const fps = Number(arg('fps', 60));
+// Pixel density: the screen is laid out at width × height (points) and drawn at `scale` times that
+// many pixels, like a Retina display. 1440x900 at 2.6667 is 3840×2400, 4K at 16:10. Coordinates in
+// the logs stay in points; the video has the pixels.
+const scale = Number(arg('scale', flow.scale ?? 1));
+const pw = Math.round(width * scale / 2) * 2, ph = Math.round(height * scale / 2) * 2;
 const chrome = process.env.CHROME_PATH ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 
 const library = join(out, 'library');
@@ -52,14 +57,14 @@ mkdirSync(folder, {recursive: true});
 let target;
 if (flow.desktop) {
   // A whole desktop: the flow launches its apps (flow.launch) and the director uses real input.
-  const desk = await startDesktop({width, height});
+  const desk = await startDesktop({width: pw, height: ph});
   process.env.DISPLAY = desk.display; // for the native module's X connection
   const recordly = recordlyDir(arg('recordly'));
-  const surface = new DesktopSurface({display: desk.display, native: recordlyNative(recordly)});
-  console.log(`desktop ${desk.display} ${width}×${height}`);
+  const surface = new DesktopSurface({display: desk.display, native: recordlyNative(recordly), scale});
+  console.log(`desktop ${desk.display} ${width}×${height}${scale !== 1 ? ` at ${scale}× (${pw}×${ph} pixels)` : ''}`);
   let ctx;
   try {
-    ctx = await flow.launch({display: desk.display, env: desk.env, desktop: surface, out, width, height, recordly});
+    ctx = await flow.launch({display: desk.display, env: desk.env, desktop: surface, out, width, height, scale, recordly});
   } catch (err) {
     desk.stop();
     throw err;
@@ -70,7 +75,7 @@ if (flow.desktop) {
   }};
 } else {
   // room above the page for the browser's tab strip and address bar, which stay out of the shot
-  const screen = await startDisplay({width, height: height + 300});
+  const screen = await startDisplay({width: pw, height: ph + Math.round(300 * scale)});
   console.log(`display ${screen.display} ${width}×${height}`);
 
   // The app in a browser window at the top-left; only its page area is captured, so page
@@ -79,7 +84,7 @@ if (flow.desktop) {
     executablePath: chrome,
     headless: false,
     env: {...process.env, DISPLAY: screen.display},
-    args: ['--window-position=0,0', `--window-size=${width},${height + 200}`, '--force-device-scale-factor=1', '--no-first-run', '--disable-infobars', '--hide-crash-restore-bubble']
+    args: ['--window-position=0,0', `--window-size=${width},${height + 200}`, `--force-device-scale-factor=${scale}`, '--no-first-run', '--disable-infobars', '--hide-crash-restore-bubble']
   });
   const context = await browser.newContext({viewport: null});
   const page = await context.newPage();
@@ -95,7 +100,7 @@ if (flow.desktop) {
   if (flow.setup) await flow.setup(page);
   await page.goto(flow.url, {waitUntil: 'networkidle'});
   await page.waitForTimeout(800);
-  target = {surface: new PageSurface(page), ctx: page, area: {x: m.sx + (m.ow - m.iw), y: m.sy + (m.oh - m.ih)}, display: screen.display, close: async () => {
+  target = {surface: new PageSurface(page), ctx: page, area: {x: Math.round((m.sx + (m.ow - m.iw)) * scale), y: Math.round((m.sy + (m.oh - m.ih)) * scale)}, display: screen.display, close: async () => {
     await browser.close();
     screen.stop();
   }};
@@ -108,7 +113,7 @@ await d.park(Math.round(width * 0.62), Math.round(height * 0.62));
 // Screen capture. x11grab stamps frames with wall-clock time; -copyts keeps it so the first
 // frame's time is exactly when the video starts, the anchor for the cursor log.
 const raw = join(out, 'raw.mkv');
-const ff = spawn('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-f', 'x11grab', '-draw_mouse', '0', '-framerate', String(fps), '-video_size', `${width}x${height}`, '-i', `${target.display}+${area.x},${area.y}`, '-copyts', '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '10', '-pix_fmt', 'yuv444p', raw], {stdio: ['pipe', 'inherit', 'inherit']});
+const ff = spawn('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-f', 'x11grab', '-draw_mouse', '0', '-framerate', String(fps), '-video_size', `${pw}x${ph}`, '-i', `${target.display}+${area.x},${area.y}`, '-copyts', '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '10', '-pix_fmt', 'yuv444p', raw], {stdio: ['pipe', 'inherit', 'inherit']});
 const ffDone = new Promise(r => ff.on('exit', r));
 await new Promise(r => setTimeout(r, 1200)); // a beat of the starting screen
 
@@ -121,7 +126,7 @@ try {
   failure = err;
   // what the screen showed when it failed
   try {
-    execFileSync('ffmpeg', ['-v', 'error', '-y', '-f', 'x11grab', '-video_size', `${width}x${height}`, '-i', `${target.display}+${area.x},${area.y}`, '-frames:v', '1', join(out, 'failure.png')]);
+    execFileSync('ffmpeg', ['-v', 'error', '-y', '-f', 'x11grab', '-video_size', `${pw}x${ph}`, '-i', `${target.display}+${area.x},${area.y}`, '-frames:v', '1', join(out, 'failure.png')]);
   } catch {}
 }
 await new Promise(r => setTimeout(r, 1000));
@@ -141,10 +146,11 @@ const cuts = d.waits.map(([a, b]) => [Math.max(a, startedAt), b]).filter(([a, b]
 const cutBefore = t => cuts.reduce((sum, [a, b]) => sum + (t > a ? Math.min(t, b) - a : 0), 0);
 const cutTime = t => t - cutBefore(t);
 const vf = cuts.length
-  ? [`select='not(${cuts.map(([a, b]) => `between(t,${(a - startedAt) / 1000},${(b - startedAt) / 1000})`).join('+')})'`, `setpts=PTS-(${cuts.map(([a, b]) => `gte(T,${(b - startedAt) / 1000})*${(b - a) / 1000}`).join('+')})/TB`]
+  ? [`select='not(${cuts.map(([a, b]) => `between(t,${(a - startedAt) / 1000},${(b - startedAt) / 1000})`).join('+')})'`, `setpts='PTS-(${cuts.map(([a, b]) => `gte(T,${(b - startedAt) / 1000})*${(b - a) / 1000}`).join('+')})/TB'`]
   : [];
 execFileSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-i', raw, ...(vf.length ? ['-vf', vf.join(',')] : []), '-c:v', 'libx264', '-preset', 'medium', '-crf', '16', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', join(folder, 'screen.mp4')]);
 if (cuts.length) console.log(`cut ${cuts.length} wait${cuts.length > 1 ? 's' : ''}: ${(cuts.reduce((s, [a, b]) => s + b - a, 0) / 1000).toFixed(1)} s`);
+const captured = Number(execFileSync('ffprobe', ['-v', 'error', '-count_frames', '-show_entries', 'stream=nb_read_frames', '-of', 'csv=p=0', join(folder, 'screen.mp4')]).toString().trim());
 const durationSec = Number(execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', join(folder, 'screen.mp4')]).toString().trim());
 rmSync(raw);
 
@@ -161,8 +167,8 @@ writeFileSync(
   join(folder, 'recording.json'),
   JSON.stringify({
     version: 1, id, name: recName, createdAt: new Date(startedAt).toISOString(), status: 'complete', platform: 'linux', backend: 'x11grab',
-    source: {kind: 'screen', name: 'Screen', frame: {x: 0, y: 0, width, height}, scaleFactor: 1},
-    tracks: {screen: {file: 'screen.mp4', startedAt, width, height, fps, cursorInVideo: false, systemAudio: false}, cursor: {file: 'cursor.ndjson', clicks: true}},
+    source: {kind: 'screen', name: 'Screen', frame: {x: 0, y: 0, width, height}, scaleFactor: scale},
+    tracks: {screen: {file: 'screen.mp4', startedAt, width: pw, height: ph, fps, cursorInVideo: false, systemAudio: false}, cursor: {file: 'cursor.ndjson', clicks: true}},
     pauses: [], durationSec, endedAt: startedAt + Math.round(durationSec * 1000)
   }, null, 2)
 );
@@ -173,7 +179,7 @@ writeFileSync(join(library, 'Projects', `${recName}.recordly`), JSON.stringify({
 // the beats, in seconds from the start of the video, for review.mjs
 const sec = t => +((cutTime(t) - startedAt) / 1000).toFixed(3);
 // what the flow says about the finished video (its shape), for render.mjs
-writeFileSync(join(out, 'walkthrough.json'), JSON.stringify({name: recName, aspect: flow.aspect ?? 'native', width, height}, null, 2));
+writeFileSync(join(out, 'walkthrough.json'), JSON.stringify({name: recName, aspect: flow.aspect ?? 'native', width, height, scale}, null, 2));
 writeFileSync(join(out, 'beats.json'), JSON.stringify({width, height, beats: d.beats.map(b => ({...b, t: sec(b.t), end: sec(b.end ?? b.t)}))}, null, 2));
 const clicks = lines.filter(l => l.click === 'down').length;
-console.log(`recorded ${durationSec.toFixed(1)} s, ${clicks} clicks → ${library}`);
+console.log(`recorded ${durationSec.toFixed(1)} s at ${pw}×${ph}, ${clicks} clicks → ${library}`);

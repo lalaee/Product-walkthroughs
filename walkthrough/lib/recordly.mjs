@@ -21,7 +21,7 @@ export function recordlyNative(dir) {
  * Returns the app, a lookup for its windows by kind ('main', 'overlay'), and where a window's content
  * sits on screen.
  */
-export async function launchRecordly({dir, env = process.env, library, motion = 'smooth', settings = {}, recorder = {}, downloads}) {
+export async function launchRecordly({dir, env = process.env, library, motion = 'smooth', settings = {}, recorder = {}, downloads, scale}) {
   const userData = mkdtempSync(join(tmpdir(), 'recordly-profile-'));
   writeFileSync(
     join(userData, 'state.json'),
@@ -34,7 +34,7 @@ export async function launchRecordly({dir, env = process.env, library, motion = 
   const app = await electron.launch({
     executablePath: join(dir, 'node_modules', 'electron', 'dist', 'electron'),
     cwd: join(dir, 'apps', 'desktop'),
-    args: ['.', '--no-sandbox', `--user-data-dir=${userData}`, '--autoplay-policy=no-user-gesture-required'],
+    args: ['.', '--no-sandbox', `--user-data-dir=${userData}`, '--autoplay-policy=no-user-gesture-required', ...(scale ? [`--force-device-scale-factor=${scale}`] : [])],
     env,
     timeout: 60_000
   });

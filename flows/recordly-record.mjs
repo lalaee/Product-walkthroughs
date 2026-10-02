@@ -13,17 +13,18 @@ import {launchRecordly} from '../walkthrough/lib/recordly.mjs';
 export const name = 'Recordly — record your screen';
 export const desktop = true;
 export const size = '1440x900';
+export const scale = 8 / 3; // 3840×2400 pixels: 4K at 16:10
 export const aspect = '16:10';
 
 const taskly = pathToFileURL(new URL('../demo-app/index.html', import.meta.url).pathname).href;
 
-export async function launch({env, desktop, out, width, height, recordly}) {
+export async function launch({env, desktop, out, width, height, scale, recordly}) {
   // the app being recorded: Taskly in a browser, filling the screen
   const browser = await chromium.launch({
     executablePath: process.env.CHROME_PATH ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
     headless: false,
     env,
-    args: ['--window-position=0,0', `--window-size=${width},${height}`, '--no-first-run', '--disable-infobars', '--hide-crash-restore-bubble', '--force-device-scale-factor=1']
+    args: ['--window-position=0,0', `--window-size=${width},${height}`, '--no-first-run', '--disable-infobars', '--hide-crash-restore-bubble', `--force-device-scale-factor=${scale}`]
   });
   const page = await (await browser.newContext({viewport: null})).newPage();
   await page.goto(taskly);
@@ -33,7 +34,7 @@ export async function launch({env, desktop, out, width, height, recordly}) {
   const library = join(out, 'recordly-library');
   rmSync(library, {recursive: true, force: true});
   mkdirSync(library, {recursive: true});
-  const rec = await launchRecordly({dir: recordly, env, library, settings: {hideRecorder: false}});
+  const rec = await launchRecordly({dir: recordly, env, library, scale, settings: {hideRecorder: false}});
   const main = await rec.window('main');
   desktop.register(main, rec.origin(main));
   await (await rec.app.browserWindow(main)).evaluate(w => w.maximize());
@@ -77,7 +78,7 @@ export async function run(d, {main, overlay, taskly}) {
 
   // Recordly opens the editor and analyses the recording: a wait, cut from the video
   const zoom = main.getByRole('button', {name: /Auto \(follows cursor\)|Manual focus/}).first();
-  const suggested = await d.idle(() => zoom.waitFor({timeout: 30_000}).then(() => true, () => false));
+  const suggested = await d.idle(() => zoom.waitFor({timeout: 8_000}).then(() => true, () => false));
   if (!suggested) {
     // now and then Recordly doesn't suggest them on its own; then ask, as a person would
     await d.click(main.getByRole('button', {name: 'Suggest zooms'}).first(), {hold: 900, show: zoom, label: 'Suggest zooms'});
@@ -86,8 +87,9 @@ export async function run(d, {main, overlay, taskly}) {
   await d.wait(800);
 
   // trim the start: playhead past the bar, split there, delete the first part
-  const z0 = await d.s.box(main.getByText('0:00.0', {exact: true}).last());
-  const z1 = await d.s.box(main.getByText('0:01.0', {exact: true}).last());
+  // (its labels read 0:00.0 or 0:00, depending on how far the timeline is zoomed)
+  const z0 = await d.s.box(main.getByText(/^0:00(\.0)?$/).last());
+  const z1 = await d.s.box(main.getByText(/^0:01(\.0)?$/).last());
   const ruler = {x: Math.round(z0.x + (z1.x - z0.x) * trimAt + 1), y: Math.round(z0.y + z0.h / 2)};
   await d.click(ruler, {hold: 600, label: `the ruler at ${trimAt} s`});
   await d.click(main.getByRole('button', {name: /^Split clip/}), {hold: 700, label: 'Split clip at playhead'});

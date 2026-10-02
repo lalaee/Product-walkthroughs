@@ -107,7 +107,7 @@ const capFor = b => Math.min(W / (b.w * MARGIN), H / (b.h * MARGIN));
 const span = (a, b) => Array.from({length: Math.max(1, Math.round((b - a) / 0.05)) + 1}, (_, k) => a + k * 0.05).filter(s => s <= b + 1e-9);
 
 // ---------------------------------------------------------------- what changed on screen
-const SW = 480, SH = 270;
+const SW = 480, SH = Math.round((SW * H) / W / 2) * 2; // the recording's own shape
 const raw = join(recDir, 'screen.mp4');
 const grab = s => execFileSync('ffmpeg', ['-v', 'error', '-ss', String(Math.max(0, s)), '-i', raw, '-frames:v', '1', '-vf', `scale=${SW}:${SH},format=gray`, '-f', 'rawvideo', '-']);
 function changed(a, b) {
@@ -120,8 +120,8 @@ function changed(a, b) {
         if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
       }
   if (n < 15) return null;
-  const k = W / SW;
-  return {x: Math.round(x0 * k), y: Math.round(y0 * k), w: Math.round((x1 - x0 + 1) * k), h: Math.round((y1 - y0 + 1) * k)};
+  const kx = W / SW, ky = H / SH;
+  return {x: Math.round(x0 * kx), y: Math.round(y0 * ky), w: Math.round((x1 - x0 + 1) * kx), h: Math.round((y1 - y0 + 1) * ky)};
 }
 
 // ---------------------------------------------------------------- check every beat

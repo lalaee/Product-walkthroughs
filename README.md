@@ -112,6 +112,18 @@ cursor's shape is the system cursor's, read through Recordly's native module.
 
 Needs `apt-get install xdotool openbox xcompmgr`. openbox gives windows stacking, focus and
 always-on-top, and xcompmgr makes see-through windows such as Recordly's floating recorder draw.
+A flow can set its pixel density (`export const scale = 2`, or `--scale`): the screen is laid out
+at `size` in points and drawn at `scale` times the pixels, like a Retina display, so zooms stay
+sharp. 1440×900 at 8/3 is 3840×2400, 4K at 16:10, Recordly's largest export. Logs stay in points.
+Higher densities cost frame rate on a machine without a GPU. Measured on 4 cores with
+Recordly recording too:
+
+| Density | Pixels | Recordly's own recording | Its preview playing back |
+|---|---|---|---|
+| 1× | 1440×900 | smooth | ~30 fps |
+| 2× | 2880×1800 | ~25 fps | ~13 fps |
+| 8/3 (4K) | 3840×2400 | ~9 fps | ~8 fps |
+
 A flow can set its screen size (`export const size = '1440x900'`) and the shape of the finished
 video (`export const aspect = '1:1'`, which `render.mjs` sets in Recordly's "Video shape" picker;
 `--aspect` overrides it). Wrap waits on the app in `d.idle(() => …)`, such as a window opening or
