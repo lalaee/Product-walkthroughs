@@ -57,7 +57,21 @@ export class Director {
 
   async #box(target) {
     if (isPoint(target)) return {x: target.x - 4, y: target.y - 4, w: 8, h: 8};
-    return this.s.box(target).catch(() => null);
+    return this.#thinking(() => this.s.box(target).catch(() => null));
+  }
+
+  /**
+   * Time spent finding things on screen (OCR takes about a second) while nothing moves: cut from the
+   * video, so the pointer doesn't stand still waiting for the director.
+   */
+  async #thinking(fn) {
+    const start = Date.now();
+    try {
+      return await fn();
+    } finally {
+      const end = Date.now();
+      if (end - start > 250) this.waits.push([start + 40, end - 40]);
+    }
   }
 
   /** Boxes of the `show` targets, noting any that aren't on screen. */
@@ -101,7 +115,7 @@ export class Director {
 
   async #point(target) {
     if (isPoint(target)) return target;
-    const b = await this.s.point(target);
+    const b = await this.#thinking(() => this.s.point(target));
     if (!b) throw new Error(`not visible: ${target}`);
     return {x: Math.round(b.x + b.w / 2), y: Math.round(b.y + b.h / 2)};
   }
@@ -109,7 +123,7 @@ export class Director {
   /** Travels to a target: a locator, a selector (page flows) or {x, y}. */
   async moveTo(target, {duration} = {}) {
     const to = await this.#point(target);
-    this.hover = isPoint(target) ? null : {box: await this.#box(target), clickable: await this.s.clickable(target).catch(() => false)};
+    this.hover = isPoint(target) ? null : {box: await this.#box(target), clickable: await this.#thinking(() => this.s.clickable(target).catch(() => false))};
     const from = this.pos ?? to;
     const dist = Math.hypot(to.x - from.x, to.y - from.y);
     if (dist < 1) return to;

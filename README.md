@@ -165,6 +165,14 @@ Bloom wallpaper and the dark taskbar, built from the Windows 11 UI Kit (Communit
 the kit's own icons. Windows have no decorations from the window manager; apps draw their own title
 bars. `flows/recordly-windows.mjs` gives its Taskly window a Windows 11 one.
 
+**Apps that aren't web pages** (Flutter, GTK, Qt): `desktop.window(title)` gives targets found on
+screen. `.text('Send')` finds the words by OCR (tesseract, on the window enlarged 2×, without the
+pointer in the way), and `.at(x, y, w, h)` is a position in the window. A read is reused until the
+window changes. The time the director spends finding a target is cut from the video, so the pointer
+never stands waiting. `walkthrough/lib/webwindow.mjs` opens a web page in a frameless see-through
+window, for props on the desktop (a phone screen). `desktops/windows11/titlebar.mjs` gives an app
+that draws no title bar a Windows 11 one.
+
 If a flow fails, `failure.png` is the screen at that moment, and the Recordly flow keeps
 Recordly's log in `recordly.log`.
 
@@ -205,6 +213,16 @@ zoom. Hold after a click that changes the screen, so the viewer sees what happen
   `videos/recordly-record-review.png`. It was recorded before the hook, plan and readability
   changes. Recordly's own recording inside it runs at about 9 fps at this density on a machine
   without a GPU, so its playback in the preview is choppy.
+- `videos/localsend-send.mp4`: [LocalSend](https://github.com/localsend/localsend) sending a photo
+  from the PC to a phone nearby, on the Windows 11 desktop. LocalSend is the real app (the v1.18.2
+  Linux release, unmodified), driven by OCR. The phone is a stand-in: `flows/localsend/peer.mjs` is
+  a LocalSend receiver speaking the published protocol (v2.2), so the app really discovers it and
+  really transfers the file. Its screen (`flows/localsend/phone.html`) is mine, in LocalSend's
+  colours, not LocalSend's mobile app. The PC's chip on LocalSend's sending screen says "Linux",
+  because that's what it runs on here. 17.8 s, 1920×1080 at 60 fps, all checks passed. Poster,
+  share copy, plan and contact sheet alongside (`videos/localsend-send*`).
+  Setup: the LocalSend Linux release in `/home/user/apps/localsend` (or `LOCALSEND_APP`), and
+  `apt-get install tesseract-ocr feh libayatana-appindicator3-1 libegl1 libgl1`.
 - `videos/recordly-windows.mp4`: Recordly on a Windows 11 desktop, starting from its recorder bar,
   with Taskly already open. It opens on the payoff (the recording playing back, zoomed in), then
   records with a 3× countdown, creates a project in Taskly, stops with Ctrl+Shift+2, points out the

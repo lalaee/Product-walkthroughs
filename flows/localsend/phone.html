@@ -1,0 +1,114 @@
+<!doctype html>
+<!-- The phone in LocalSend walkthroughs: a LocalSend receive screen that follows peer.mjs's
+     events (request → accept → progress → received). The page's backdrop is the desktop wallpaper
+     at the window's position (?bx, ?by, ?bw, ?bh: where the window sits on a desktop of that size),
+     so the window disappears into the desktop and only the phone shows. -->
+<meta charset="utf-8">
+<title>{{alias}}</title>
+<style>
+  :root { --teal: #00695c; --teal-soft: #d8efe9; --ink: #182321; --sub: #5d6b68; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; font-family: Roboto, "Segoe UI", Inter, "Noto Sans", system-ui, sans-serif; }
+  body { display: grid; place-items: center; background: transparent no-repeat; }
+  .phone { width: 340px; height: 700px; border-radius: 48px; background: #111; padding: 12px; box-shadow: 0 30px 60px rgba(0, 0, 0, .45), inset 0 0 0 2px #2a2a2a; position: relative; }
+  .screen { width: 100%; height: 100%; border-radius: 37px; background: #f3faf8; overflow: hidden; position: relative; display: flex; flex-direction: column; }
+  .notch { position: absolute; top: 12px; left: 50%; width: 26px; height: 26px; margin-left: -13px; border-radius: 50%; background: #111; z-index: 3; }
+  .status { height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 6px 28px 0; font-size: 13px; font-weight: 600; color: var(--ink); }
+  .status i { display: inline-block; width: 16px; height: 9px; border: 1.5px solid var(--ink); border-radius: 2px; position: relative; }
+  .status i::after { content: ""; position: absolute; inset: 1px; right: 4px; background: var(--ink); }
+  header { padding: 8px 22px 4px; font-size: 22px; font-weight: 700; color: var(--ink); }
+  main { flex: 1; position: relative; }
+  .view { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center; opacity: 0; transform: translateY(12px); transition: opacity .35s ease, transform .35s ease; pointer-events: none; }
+  .view.on { opacity: 1; transform: none; }
+  .radar { width: 150px; height: 150px; position: relative; margin-bottom: 26px; }
+  .radar span { position: absolute; inset: 0; border-radius: 50%; border: 6px dashed var(--teal); animation: spin 18s linear infinite; }
+  .radar b { position: absolute; inset: 34px; border-radius: 50%; background: var(--teal); }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .alias { font-size: 30px; color: var(--ink); }
+  .hint { margin-top: 10px; color: var(--sub); font-size: 14px; }
+  .card { width: 100%; background: #fff; border-radius: 22px; padding: 22px 18px; box-shadow: 0 6px 18px rgba(0, 60, 50, .1); text-align: left; }
+  .from { font-size: 13px; color: var(--sub); }
+  .from strong { display: block; font-size: 20px; color: var(--ink); margin-top: 2px; }
+  .file { display: flex; gap: 12px; align-items: center; margin: 18px 0 20px; padding: 12px; border-radius: 14px; background: var(--teal-soft); }
+  .file .ic { width: 40px; height: 40px; border-radius: 10px; background: var(--teal); display: grid; place-items: center; color: #fff; font-size: 18px; flex: none; }
+  .file .n { font-weight: 600; color: var(--ink); font-size: 15px; word-break: break-all; }
+  .file .s { color: var(--sub); font-size: 13px; }
+  .buttons { display: flex; gap: 10px; }
+  .buttons div { flex: 1; text-align: center; padding: 13px 0; border-radius: 999px; font-weight: 600; font-size: 15px; transition: transform .15s ease, filter .15s ease; }
+  .decline { color: var(--teal); background: #fff; box-shadow: inset 0 0 0 1.5px #b9d6cf; }
+  .accept { color: #fff; background: var(--teal); }
+  .accept.tap { transform: scale(.94); filter: brightness(.85); }
+  .bar { width: 100%; height: 8px; border-radius: 4px; background: var(--teal-soft); overflow: hidden; margin-top: 18px; }
+  .bar b { display: block; height: 100%; width: 0; background: var(--teal); transition: width .2s linear; }
+  .done img { width: 100%; max-height: 300px; object-fit: cover; border-radius: 18px; box-shadow: 0 8px 22px rgba(0, 0, 0, .18); }
+  .saved { margin-top: 18px; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; color: var(--teal); }
+  .saved::before { content: "✓"; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--teal); color: #fff; font-size: 14px; }
+  .bubble { background: #fff; border-radius: 18px; padding: 16px; font-size: 16px; color: var(--ink); box-shadow: 0 6px 18px rgba(0, 60, 50, .1); text-align: left; white-space: pre-wrap; width: 100%; }
+  nav { height: 64px; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #e1ece9; font-size: 12px; color: var(--sub); }
+  nav .on { color: var(--teal); font-weight: 700; }
+</style>
+<div class="phone"><div class="notch"></div><div class="screen">
+  <div class="status"><span id="clock">11:00</span><i></i></div>
+  <header>LocalSend</header>
+  <main>
+    <section class="view on" id="ready"><div class="radar"><span></span><b></b></div><div class="alias">{{alias}}</div><div class="hint">Ready to receive</div></section>
+    <section class="view" id="request"><div class="card">
+      <div class="from">Incoming from<strong id="from"></strong></div>
+      <div class="file"><div class="ic">▣</div><div><div class="n" id="fname"></div><div class="s" id="fsize"></div></div></div>
+      <div class="buttons"><div class="decline">Decline</div><div class="accept" id="accept">Accept</div></div>
+    </div></section>
+    <section class="view" id="progress"><div class="card"><div class="from">Receiving from<strong id="pfrom"></strong></div><div class="file"><div class="ic">▣</div><div><div class="n" id="pname"></div><div class="s" id="ppct">0%</div></div></div><div class="bar"><b id="pbar"></b></div></div></section>
+    <section class="view done" id="received"><img id="img" alt=""><div class="saved" id="saved">Saved to Photos</div></section>
+    <section class="view" id="message"><div class="from" style="margin-bottom:10px">Message from <b id="mfrom"></b></div><div class="bubble" id="mtext"></div></section>
+  </main>
+  <nav><span class="on">Receive</span><span>Send</span><span>Settings</span></nav>
+</div></div>
+<script>
+  // the backdrop: the desktop wallpaper, where this window sits
+  const q = new URLSearchParams(location.search);
+  if (q.get('bg')) {
+    document.body.style.backgroundImage = `url(${q.get('bg')})`;
+    document.body.style.backgroundSize = `${q.get('bw')}px ${q.get('bh')}px`;
+    document.body.style.backgroundPosition = `${-q.get('bx')}px ${-q.get('by')}px`;
+  }
+  const show = id => document.querySelectorAll('.view').forEach(v => v.classList.toggle('on', v.id === id));
+  const size = n => (n > 1e6 ? `${(n / 1e6).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1e3))} KB`);
+  const $ = id => document.getElementById(id);
+  const ev = new EventSource('/phone/events');
+  ev.onmessage = m => {
+    const e = JSON.parse(m.data);
+    if (e.type === 'request') {
+      $('from').textContent = e.from;
+      $('fname').textContent = e.files.length === 1 ? e.files[0].name : `${e.files.length} files`;
+      $('fsize').textContent = size(e.files.reduce((s, f) => s + f.size, 0));
+      $('accept').classList.remove('tap');
+      show('request');
+    }
+    if (e.type === 'accept') $('accept').classList.add('tap');
+    if (e.type === 'progress') {
+      $('pfrom').textContent = $('from').textContent;
+      $('pname').textContent = e.name;
+      const p = Math.min(100, Math.round((e.got / e.size) * 100));
+      $('ppct').textContent = `${p}%`;
+      $('pbar').style.width = `${p}%`;
+      show('progress');
+    }
+    if (e.type === 'received') {
+      if ((e.fileType || '').startsWith('image/')) {
+        $('img').src = e.url;
+        $('img').style.display = '';
+        $('saved').textContent = 'Saved to Photos';
+      } else {
+        $('img').style.display = 'none';
+        $('saved').textContent = `${e.name} saved`;
+      }
+      show('received');
+    }
+    if (e.type === 'message') {
+      $('mfrom').textContent = e.from;
+      $('mtext').textContent = e.text;
+      show('message');
+    }
+    if (e.type === 'cancel') show('ready');
+  };
+</script>
