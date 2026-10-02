@@ -8,7 +8,7 @@ import {spawn, execFileSync} from 'node:child_process';
 import {copyFileSync, mkdirSync, mkdtempSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join, resolve} from 'node:path';
-import {showTitleBar, TITLE_BAR} from '../desktops/windows11/titlebar.mjs';
+import {paintedEdges, showTitleBar, TITLE_BAR} from '../desktops/windows11/titlebar.mjs';
 import {openWebWindow} from '../walkthrough/lib/webwindow.mjs';
 import {startPeer} from './localsend/peer.mjs';
 
@@ -25,9 +25,9 @@ export const plan = {
   hook: 'Open on the payoff: the photo already on the phone.',
   flow: ['LocalSend is open on the PC, a phone nearby', 'Send → File: pick a photo', 'The phone shows up under Nearby devices: click it', 'The phone accepts; the photo arrives'],
   duration: [12, 22],
-  milestones: [{beat: 'File', by: 6}, {beat: 'Pixel 8', by: 12}]
+  milestones: [{beat: 'File', by: 7}, {beat: 'Pixel 8', by: 12}]
 };
-export const hook = {mark: 'payoff', seconds: 2.2};
+export const hook = {mark: 'payoff', seconds: 2.5};
 export const poster = 'the photo on the phone';
 export const share = 'LocalSend: pick a photo on your PC, tap your phone in the list, done. Straight over your Wi-Fi, no cloud, no account.';
 
@@ -62,10 +62,30 @@ export async function launch({env, desktop, out, width, height, recordly}) {
     }
   }
   const id = xd('search', '--onlyvisible', '--name', '^LocalSend$').split('\n')[0];
-  xd('windowsize', id, win.w, win.h);
-  xd('windowmove', id, win.x, win.y);
-  const bar = await showTitleBar({env, title: 'LocalSend', icon: join(LOCALSEND, '../data/flutter_assets/assets/img/logo-32.png'), x: win.x, y: win.y - TITLE_BAR, width: win.w});
+  // LocalSend restores its own window size and place as it starts: set ours until it holds
+  const geometry = () => Object.fromEntries(xd('getwindowgeometry', '--shell', id).split('\n').map(l => l.split('=')).map(([k, v]) => [k, Number(v)]));
+  // (the window manager may offset it by its border: what counts is that it's the right size and
+  // stays put, and the title bar goes where it actually is)
+  let g, prev;
+  for (let i = 0; i < 20; i++) {
+    xd('windowsize', id, win.w, win.h);
+    xd('windowmove', id, win.x, win.y);
+    await new Promise(r => setTimeout(r, 400));
+    prev = g;
+    g = geometry();
+    const near = Math.abs(g.X - win.x) <= 4 && Math.abs(g.Y - win.y) <= 4 && g.WIDTH === win.w && g.HEIGHT === win.h;
+    if (i >= 3 && near && prev && prev.X === g.X && prev.Y === g.Y) break;
+  }
+  if (Math.abs(g.X - win.x) > 4 || Math.abs(g.Y - win.y) > 4 || g.WIDTH !== win.w || g.HEIGHT !== win.h) throw new Error(`LocalSend's window is at ${g.X},${g.Y} ${g.WIDTH}×${g.HEIGHT}, not where it was put`);
+  // the title bar on the window as it actually is
+  // (fitted to where the window is painted, a few rows down, which can differ from its frame by a pixel)
+  await new Promise(r => setTimeout(r, 800));
+  const edges = paintedEdges({env, y: g.Y + 12, x0: g.X - 20, x1: g.X + g.WIDTH + 20}) ?? {left: g.X, right: g.X + g.WIDTH - 1};
+  const bar = await showTitleBar({env, title: 'LocalSend', icon: join(LOCALSEND, '../data/flutter_assets/assets/img/logo-32.png'), x: edges.left, y: g.Y - TITLE_BAR, width: edges.right - edges.left + 1});
   await new Promise(r => setTimeout(r, 3000)); // discovery
+  // still in place, title bar and all, as recording starts
+  const now = geometry();
+  if (now.X !== g.X || now.Y !== g.Y || now.WIDTH !== g.WIDTH) throw new Error(`LocalSend's window moved to ${now.X},${now.Y} ${now.WIDTH}×${now.HEIGHT}`);
 
   return {
     localsend: desktop.window('^LocalSend$'), phone, home,

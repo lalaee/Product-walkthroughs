@@ -226,7 +226,9 @@ const inCut = t => cuts.some(([a, b]) => t > a && t < b);
 const beats = d.beats.filter(b => !inCut(b.t)).map(b => ({...b, t: sec(playsMain(b.t)), end: sec(playsMain(b.end ?? b.t))}));
 const hookSeg = segments.find(sg => sg.hook);
 if (hookSeg) {
-  const hookBeats = d.beats.filter(b => (b.end ?? b.t) > hookSeg.a && b.t < hookSeg.b).map(b => ({...b, label: `hook · ${b.label}`, t: sec(startedAt + hookSeg.out + Math.max(0, b.t - hookSeg.a)), end: sec(startedAt + hookSeg.out + Math.min(hookSeg.b, b.end ?? b.t) - hookSeg.a)}));
+  // (a hook is a couple of seconds: no zoom requests in it, which would spend them zooming in and
+  // out; the payoff reads at a glance as it stands)
+  const hookBeats = d.beats.filter(b => (b.end ?? b.t) > hookSeg.a && b.t < hookSeg.b).map(({zoom, ...b}) => ({...b, label: `hook · ${b.label}`, t: sec(startedAt + hookSeg.out + Math.max(0, b.t - hookSeg.a)), end: sec(startedAt + hookSeg.out + Math.min(hookSeg.b, b.end ?? b.t) - hookSeg.a)}));
   beats.unshift(...hookBeats);
 }
 // what the flow says about the finished video (its shape, plan, poster, share copy), for render.mjs,

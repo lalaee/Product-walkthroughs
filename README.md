@@ -219,7 +219,7 @@ zoom. Hold after a click that changes the screen, so the viewer sees what happen
   a LocalSend receiver speaking the published protocol (v2.2), so the app really discovers it and
   really transfers the file. Its screen (`flows/localsend/phone.html`) is mine, in LocalSend's
   colours, not LocalSend's mobile app. The PC's chip on LocalSend's sending screen says "Linux",
-  because that's what it runs on here. 17.8 s, 1920×1080 at 60 fps, all checks passed. Poster,
+  because that's what it runs on here. 18.5 s, 1920×1080 at 60 fps, all checks passed. Poster,
   share copy, plan and contact sheet alongside (`videos/localsend-send*`).
   Setup: the LocalSend Linux release in `/home/user/apps/localsend` (or `LOCALSEND_APP`), and
   `apt-get install tesseract-ocr feh libayatana-appindicator3-1 libegl1 libgl1`.

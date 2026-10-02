@@ -14,5 +14,5 @@
 ## Checks
 
 - Length: 12–22 s
-- "File" by 6 s
+- "File" by 7 s
 - "Pixel 8" by 12 s
