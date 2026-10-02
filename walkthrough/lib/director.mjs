@@ -28,7 +28,8 @@ export class Director {
 
   /**
    * The pointer's shape where it is now, as the browser would draw it: the hand over links and
-   * buttons, the I-beam over fields. Written to the log on change ({"cursor": …}), checked at most
+   * buttons, the open hand over things to drag (Recordly closes it while the button is held), the
+   * I-beam over fields. Written to the log on change ({"cursor": …}), checked at most
    * every 100 ms while moving (as Recordly's own recorder does) and always when the pointer stops.
    */
   async #shape({force = false} = {}) {
@@ -40,6 +41,7 @@ export class Director {
       if (!el) return 'arrow';
       const c = getComputedStyle(el).cursor;
       if (c === 'pointer') return 'pointer';
+      if (c === 'grab' || c === 'grabbing') return 'grab';
       if (c === 'text' || c === 'vertical-text') return 'text';
       if (c === 'auto' && (el.isContentEditable || el.matches('textarea, input:not([type=checkbox]):not([type=radio]):not([type=button]):not([type=submit]):not([type=range]):not([type=color]):not([type=file])'))) return 'text';
       return 'arrow';

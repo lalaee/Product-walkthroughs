@@ -16,9 +16,11 @@ It runs on Linux, headless, with no person or Mac needed:
 
 Because the cursor is data and not pixels, the video gets the same redrawn cursor and click-driven
 zooms as a native Mac recording. That includes the cursor's shape (the hand over links and
-buttons, the I-beam in fields), read from the page's CSS and logged on every change.
+buttons, the open hand over things to drag, the I-beam in fields), read from the page's CSS and
+logged on every change. Recordings made on Linux carry no system cursor images, so Recordly draws
+its own arrow and its Figma-based hands.
 
-Last tested with Recorder-2 at `d1872ca` (Cursor motion blur).
+Last tested with Recorder-2 at `b47ba1e` (each recording drawn with its own machine's cursors).
 
 ## Setup
 
@@ -82,8 +84,10 @@ zoom presets:
 - **focused**: 0.45 s snappy moves and more, tighter zooms. These read as sharp.
 
 Recordly suggests zooms once, when it first opens a project, so add `--fresh` to redo them after
-changing `--motion`. That also discards earlier review fixes. It also saves `editor.png`, a screenshot of Recordly's timeline, so you can check
-where the zooms landed.
+changing `--motion`. That also discards earlier review fixes.
+
+`render.mjs` also saves `editor.png`, a screenshot of Recordly's timeline, so you can check where
+the zooms landed.
 
 To re-render with other settings, run `render.mjs` again. The recording is kept, so there's no need
 to record again.
