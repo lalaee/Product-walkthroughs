@@ -12,9 +12,10 @@
 // and the camera's view drawn on it, then the finished video at the action, midway and after) and
 // report.md. Exits 1 if a beat fails.
 //
-// --fix rewrites the failing zooms in the project: a manual zoom centred on everything its beats
-// need, at the most it can zoom and still show it all (or no zoom when that's under 1.3×),
-// re-checked against the camera until every beat passes. Then render again and review again.
+// --fix reframes every zoom as a manual zoom centred on everything its beats need, no tighter
+// than shows it all and at most 2× (removed when that's under 1.3×), adds the zooms the flow asked
+// for (`zoom`) where there's none, and re-checks against the camera until every beat passes. Then
+// render again and review again.
 import {execFileSync} from 'node:child_process';
 import {mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
@@ -41,6 +42,7 @@ const doc = project.doc;
 const preset = doc.motion?.preset ?? 'focused';
 const MARGIN = 1.1; // room around the needed area, so it isn't flush with the edge of the view
 const MIN_ZOOM = 1.3; // below this a zoom isn't worth its motion
+const MAX_AMOUNT = 2; // tighter than this loses the context around the action
 
 // ---------------------------------------------------------------- camera
 // Recordly's own camera and cursor code (bundled from Recorder-2's source), so the view computed
@@ -226,7 +228,7 @@ if (m.pan.v > MAX_PAN_SPEED) harsh.push(`camera pans too fast at ${m.pan.s.toFix
 const lines = [`# Review: ${project.name}`, '', `${results.length} beats, ${doc.zooms.length} zooms (${doc.motion?.preset} motion), ${failing.length} beats need attention.`, `Motion: peak zoom speed ${m.zoom.v.toFixed(1)} doublings/s at ${m.zoom.s.toFixed(1)} s, peak pan ${m.pan.v.toFixed(1)} view widths/s at ${m.pan.s.toFixed(1)} s.${harsh.map(h => `\n- ✗ ${h}`).join('')}`, ''];
 for (const r of results) lines.push(`- ${r.problems.length ? '✗' : '✓'} ${String(r.i + 1).padStart(2, '0')} ${r.beat.action} ${r.beat.label} (${r.beat.t.toFixed(1)} s)${r.problems.map(p => `\n  - ${p}`).join('')}`);
 
-if (fix && failing.length) {
+if (fix) {
   // Recordly's camera is pure, so fixes are checked here before rendering: repeat until clean.
   lines.push('', '## Fixes');
   // zooms the flow asked for where there's none: manual, on the action's target and result, from a
@@ -245,7 +247,7 @@ if (fix && failing.length) {
       const after = Math.min(Infinity, ...doc.zooms.filter(z => z.start >= (b.t + b.end) / 2).map(z => z.start - GLIDE), ...beats.filter(n => n.zoom && n.t > b.t).map(n => n.t - 0.2 - GLIDE));
       const before0 = before;
       for (const z of doc.zooms) if (z.end > b.t - 0.2 - GLIDE && z.start < b.t) z.end = Math.max(z.start + 0.6, Math.min(z.end, b.t - 0.2 - GLIDE));
-      const amount = Math.min(b.zoom, Math.floor(capFor(need) * 10) / 10);
+      const amount = Math.min(b.zoom, MAX_AMOUNT, Math.floor(capFor(need) * 10) / 10);
       if (amount < MIN_ZOOM) {
         tooBig.add(i);
         lines.push(`- ${b.t.toFixed(1)} s ${b.label}: wanted a ${b.zoom}× zoom, but what it needs (${need.w}×${need.h}) only fits at ${amount}×; left unzoomed`);
@@ -257,6 +259,23 @@ if (fix && failing.length) {
       lines.push(`- ${z.start.toFixed(1)}–${z.end.toFixed(1)} s: added a ${amount}× zoom on ${b.label}, as the flow asked`);
     }
   };
+  // Frame every zoom like a director would: centred on what the actions it covers need (Recordly's
+  // own zooms follow the cursor, which leaves the content wherever the pointer is), no tighter than
+  // that allows, and never past MAX_AMOUNT.
+  for (const z of [...doc.zooms]) {
+    const need = union(beats.map((b, i) => (b.end > z.start && b.t < z.end ? needs[i].need : null)));
+    const amount = Math.min(z.amount, MAX_AMOUNT, need ? Math.floor(capFor(need) * 10) / 10 : MAX_AMOUNT);
+    if (amount < MIN_ZOOM) {
+      doc.zooms = doc.zooms.filter(x => x !== z);
+      lines.push(`- ${z.start.toFixed(1)}–${z.end.toFixed(1)} s: ${z.amount}× ${z.mode} → removed (what it covers spans ${need.w}×${need.h})`);
+      continue;
+    }
+    if (!need || (z.mode === 'manual' && z.amount === amount)) continue;
+    lines.push(`- ${z.start.toFixed(1)}–${z.end.toFixed(1)} s: ${z.amount}× ${z.mode} → ${amount}× centred on the ${need.w}×${need.h} area its actions need`);
+    z.amount = amount;
+    z.mode = 'manual';
+    z.focus = {x: +(((need.x + need.w / 2) / W) * 100).toFixed(2), y: +(((need.y + need.h / 2) / H) * 100).toFixed(2)};
+  }
   // Repeat until nothing changes: removing a zoom that can't fit can leave a wanted zoom to add.
   for (let round = 0; round < 8; round++) {
     addWanted();

@@ -2,6 +2,9 @@
 // coordinates, typing, key presses, the box of a target, and the pointer's shape.
 import {execFileSync} from 'node:child_process';
 
+/** Whether an element is something a person clicks (the hand belongs over it). */
+const CLICKABLE = el => !!el.closest('button, a[href], summary, select, label, [role=button], [role=link], [role=tab], [role=menuitem], [role=option], [role=switch], [role=radio], [role=checkbox], [role=gridcell], input[type=checkbox], input[type=radio], input[type=button], input[type=submit]');
+
 /** One browser page; input goes into the page and coordinates are the page's own. */
 export class PageSurface {
   /** @param {import('playwright-core').Page} page */
@@ -34,6 +37,9 @@ export class PageSurface {
     await this.#loc(target).first().scrollIntoViewIfNeeded();
     return this.box(target);
   }
+  clickable(target) {
+    return this.#loc(target).first().evaluate(new Function('el', `return (${CLICKABLE})(el)`), null, {timeout: 1000});
+  }
   /** As the browser would draw it, from the CSS cursor under the pointer. */
   shape({x, y}) {
     return this.page.evaluate(([x, y]) => {
@@ -49,7 +55,7 @@ export class PageSurface {
   }
 }
 
-const KEYS = {Enter: 'Return', Escape: 'Escape', Tab: 'Tab', Space: 'space', Backspace: 'BackSpace', Delete: 'Delete', ArrowUp: 'Up', ArrowDown: 'Down', ArrowLeft: 'Left', ArrowRight: 'Right'};
+const KEYS = {Control: 'ctrl', Ctrl: 'ctrl', Shift: 'shift', Alt: 'alt', Meta: 'super', Enter: 'Return', Escape: 'Escape', Tab: 'Tab', Space: 'space', Backspace: 'BackSpace', Delete: 'Delete', ArrowUp: 'Up', ArrowDown: 'Down', ArrowLeft: 'Left', ArrowRight: 'Right'};
 
 /**
  * The whole desktop (an X display): real pointer, clicks and keys through xdotool, which every
@@ -102,6 +108,9 @@ export class DesktopSurface {
   async point(locator) {
     await locator.first().scrollIntoViewIfNeeded({timeout: 5000}).catch(() => {});
     return this.box(locator);
+  }
+  clickable(locator) {
+    return locator.first().evaluate(new Function('el', `return (${CLICKABLE})(el)`), null, {timeout: 1000});
   }
   async shape() {
     const k = this.native?.cursorKind?.();

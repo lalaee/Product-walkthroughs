@@ -7,6 +7,9 @@
 // Writes <out>/library: a Recordly recordings folder holding the recording and a project for it.
 // Render it with walkthrough/render.mjs.
 //
+// A flow may also export `size` ('1440x900') and `aspect` (Recordly's video shape for the finished
+// video: '1:1', '16:9', '9:16'…; render.mjs picks it).
+//
 // Two kinds of flow. A page flow exports `url` (and optionally `setup(page)`): the app runs in a
 // browser and only its page is captured; `run(d, page)`. A desktop flow exports `desktop = true` and
 // `launch({display, env, desktop, out, width, height, recordly})`, which starts its apps on a
@@ -35,7 +38,8 @@ if (!flowPath || flowPath.startsWith('--')) {
 const flow = await import(pathToFileURL(resolve(flowPath)).href);
 const slug = basename(flowPath).replace(/\.m?js$/, '');
 const out = resolve(arg('out', join('out', slug)));
-const [width, height] = arg('size', '1920x1080').split('x').map(Number);
+// the screen size: --size, else the flow's own `size`, else 1920x1080
+const [width, height] = arg('size', flow.size ?? '1920x1080').split('x').map(Number);
 const fps = Number(arg('fps', 60));
 const chrome = process.env.CHROME_PATH ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 
@@ -131,12 +135,21 @@ if (failure) {
 
 // Re-encode to a plain MP4 Recordly's decoder takes; timestamps restart at 0 = startedAt.
 const startedAt = Math.round(Number(execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'stream=start_time', '-of', 'csv=p=0', raw]).toString().trim()) * 1000);
-execFileSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-i', raw, '-c:v', 'libx264', '-preset', 'medium', '-crf', '16', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', join(folder, 'screen.mp4')]);
+// Waits the flow marked as idle (d.idle) are cut: their frames dropped, everything after them moved
+// up, and every time in the logs mapped the same way.
+const cuts = d.waits.map(([a, b]) => [Math.max(a, startedAt), b]).filter(([a, b]) => b > a);
+const cutBefore = t => cuts.reduce((sum, [a, b]) => sum + (t > a ? Math.min(t, b) - a : 0), 0);
+const cutTime = t => t - cutBefore(t);
+const vf = cuts.length
+  ? [`select='not(${cuts.map(([a, b]) => `between(t,${(a - startedAt) / 1000},${(b - startedAt) / 1000})`).join('+')})'`, `setpts=PTS-(${cuts.map(([a, b]) => `gte(T,${(b - startedAt) / 1000})*${(b - a) / 1000}`).join('+')})/TB`]
+  : [];
+execFileSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-i', raw, ...(vf.length ? ['-vf', vf.join(',')] : []), '-c:v', 'libx264', '-preset', 'medium', '-crf', '16', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', join(folder, 'screen.mp4')]);
+if (cuts.length) console.log(`cut ${cuts.length} wait${cuts.length > 1 ? 's' : ''}: ${(cuts.reduce((s, [a, b]) => s + b - a, 0) / 1000).toFixed(1)} s`);
 const durationSec = Number(execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', join(folder, 'screen.mp4')]).toString().trim());
 rmSync(raw);
 
 const id = `rec-${slug}`;
-const lines = d.log.filter(l => l.t >= startedAt).sort((a, b) => a.t - b.t);
+const lines = d.log.filter(l => l.t >= startedAt).map(l => ({...l, t: cutTime(l.t)})).sort((a, b) => a.t - b.t);
 // the pointer's resting place at the start, so the cursor is there from the first frame
 const parked = d.log.find(l => 'x' in l && !('click' in l));
 if (parked) lines.unshift({...parked, t: startedAt});
@@ -158,7 +171,9 @@ const now = new Date().toISOString();
 writeFileSync(join(library, 'Projects', `${recName}.recordly`), JSON.stringify({format: 'recordly-project', version: 1, id: `p-${slug}`, name: recName, created: now, edited: now, duration: durationSec, folders: [], recordingIds: [id]}));
 
 // the beats, in seconds from the start of the video, for review.mjs
-const sec = t => +((t - startedAt) / 1000).toFixed(3);
+const sec = t => +((cutTime(t) - startedAt) / 1000).toFixed(3);
+// what the flow says about the finished video (its shape), for render.mjs
+writeFileSync(join(out, 'walkthrough.json'), JSON.stringify({name: recName, aspect: flow.aspect ?? 'native', width, height}, null, 2));
 writeFileSync(join(out, 'beats.json'), JSON.stringify({width, height, beats: d.beats.map(b => ({...b, t: sec(b.t), end: sec(b.end ?? b.t)}))}, null, 2));
 const clicks = lines.filter(l => l.click === 'down').length;
 console.log(`recorded ${durationSec.toFixed(1)} s, ${clicks} clicks → ${library}`);

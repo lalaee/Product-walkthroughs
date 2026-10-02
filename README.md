@@ -16,8 +16,10 @@ It runs on Linux, headless, with no person or Mac needed:
 
 Because the cursor is data and not pixels, the video gets the same redrawn cursor and click-driven
 zooms as a native Mac recording. That includes the cursor's shape (the hand over links and
-buttons, the open hand over things to drag, the I-beam in fields), read from the page's CSS and
-logged on every change. Recordings made on Linux carry no system cursor images, so Recordly draws
+buttons, the open hand over things to drag, the I-beam in fields), read from the page's CSS (or the
+system cursor, in desktop flows) and logged on every change. The hand is also shown over anything
+clickable the pointer goes to, even where the app keeps the arrow, as Recordly's own buttons do.
+Recordly draws the shapes; the director only logs when each one applies. Recordings made on Linux carry no system cursor images, so Recordly draws
 its own arrow and its Figma-based hands.
 
 Last tested with Recorder-2 at `b47ba1e` (each recording drawn with its own machine's cursors).
@@ -66,9 +68,11 @@ click. `review.mjs` checks every action in the video:
 - **The flow.** It fails if a `show` target never appeared, or if a click, typing or key press
   changed nothing on screen. Either means the flow didn't do what it meant to.
 
-`--fix` turns each failing zoom into a manual zoom centred on everything its actions need, at the
-most it can zoom while still showing all of it, or removes it if that's under 1.3×. It re-checks
-the camera after each change until every beat passes, then saves the project for a re-render.
+`--fix` reframes every zoom as a manual zoom centred on everything its actions need. Recordly's
+own zooms follow the cursor, which can leave the content off to one side. Each zoom goes no tighter
+than still shows all of it, and never past 2×. A zoom is removed if that would be under 1.3×. It
+adds the zooms the flow asked for, and re-checks the camera after each change until every beat
+passes. Then it saves the project for a re-render.
 
 `review/sheet.png` is a contact sheet with one row per action. The first frame is the raw
 recording, with the needed area in green and the camera's view in blue (dashed at the moment of
@@ -108,6 +112,13 @@ cursor's shape is the system cursor's, read through Recordly's native module.
 
 Needs `apt-get install xdotool openbox xcompmgr`. openbox gives windows stacking, focus and
 always-on-top, and xcompmgr makes see-through windows such as Recordly's floating recorder draw.
+A flow can set its screen size (`export const size = '1440x900'`) and the shape of the finished
+video (`export const aspect = '1:1'`, which `render.mjs` sets in Recordly's "Video shape" picker;
+`--aspect` overrides it). Wrap waits on the app in `d.idle(() => …)`, such as a window opening or
+an analysis finishing. `record.mjs` cuts them from the video, keeping 0.4 s at each end, and shifts
+every timestamp after them. Shortcuts pressed with `d.press('Control+Shift+2')` are logged, so
+Recordly shows them as keycaps.
+
 If a flow fails, `failure.png` is the screen at that moment, and the Recordly flow keeps
 Recordly's log in `recordly.log`.
 
@@ -140,10 +151,11 @@ zoom. Hold after a click that changes the screen, so the viewer sees what happen
 
 ## Videos
 
-- `videos/recordly-record.mp4`: Recordly recording a fresh screen. Start a new recording, count
-  down, create a project in Taskly while it records, stop, and land in the editor with a zoom
-  suggested from the clicks, then play it back. 46 s, 1080p60, reviewed and fixed (all 11 actions
-  in view, peak zoom speed 3.0 doublings/s); contact sheet `videos/recordly-record-review.png`.
+- `videos/recordly-record.mp4`: Recordly recording a fresh screen on a 1440×900 desktop, as a
+  1440×1440 square video. Start a new recording, hide the recorder, create a project in Taskly
+  while it records, stop with Ctrl+Shift+2, land in the editor with zooms suggested from the clicks,
+  trim off the start, and play it back. 38 s, 60 fps, reviewed and fixed (all 15 actions in view,
+  peak zoom speed 3.0 doublings/s); contact sheet `videos/recordly-record-review.png`.
 - `videos/demo-taskly.mp4`: the pipeline on the bundled demo page (`demo-app/`): create a project,
   open it, add two tasks, tick one off. 27 s, 1080p60, smooth motion, reviewed and fixed (all
   11 actions in view, peak zoom speed 2.6 doublings/s); its contact sheet is `videos/demo-taskly-review.png`.

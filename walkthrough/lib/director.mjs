@@ -31,6 +31,8 @@ export class Director {
     this.pos = null;
     this.kind = null;
     this.kindAt = 0;
+    this.hover = null; // the target the pointer is heading to or resting on: its box, and whether it's clickable
+    this.waits = []; // [start, end] wall-clock ms of waits to cut from the video
   }
 
   #write(entry) {
@@ -41,7 +43,10 @@ export class Director {
   async #shape({force = false} = {}) {
     if (!force && Date.now() - this.kindAt < 100) return;
     this.kindAt = Date.now();
-    const kind = (await this.s.shape(this.pos).catch(() => null)) ?? this.kind ?? 'arrow';
+    // the hand over anything clickable, as a viewer expects, even where the app keeps the arrow
+    const h = this.hover, p = this.pos;
+    const onClickable = h?.clickable && h.box && p.x >= h.box.x && p.x <= h.box.x + h.box.w && p.y >= h.box.y && p.y <= h.box.y + h.box.h;
+    const kind = onClickable ? 'pointer' : (await this.s.shape(this.pos).catch(() => null)) ?? this.kind ?? 'arrow';
     if (kind !== this.kind) {
       this.kind = kind;
       this.#write({cursor: kind});
@@ -95,6 +100,7 @@ export class Director {
   /** Travels to a target: a locator, a selector (page flows) or {x, y}. */
   async moveTo(target, {duration} = {}) {
     const to = await this.#point(target);
+    this.hover = isPoint(target) ? null : {box: await this.#box(target), clickable: await this.s.clickable(target).catch(() => false)};
     const from = this.pos ?? to;
     const dist = Math.hypot(to.x - from.x, to.y - from.y);
     if (dist < 1) return to;
@@ -144,9 +150,12 @@ export class Director {
     if (show) await this.#shows(beat, show);
   }
 
-  /** Presses a key (Playwright names: Enter, Escape, Tab, Space…). */
+  /** Presses a key or a shortcut (Playwright names: Enter, Escape, Space, Control+Shift+2…). */
   async press(key, {hold = 600, show, label, zoom} = {}) {
     const done = await this.#beat('press', label ?? `press ${key}`, null, Date.now(), show, zoom);
+    // a shortcut (with Ctrl, Alt or Meta) goes in the log too: Recordly shows it as keycaps
+    const parts = key.split('+'), mods = parts.slice(0, -1).map(m => ({Control: 'ctrl', Ctrl: 'ctrl', Shift: 'shift', Alt: 'alt', Meta: 'cmd'})[m] ?? m.toLowerCase());
+    if (mods.some(m => m !== 'shift')) this.#write({key: parts.at(-1).toUpperCase(), mods});
     await this.s.press(key);
     await sleep(hold);
     await done();
@@ -162,5 +171,19 @@ export class Director {
 
   wait(ms) {
     return sleep(ms);
+  }
+
+  /**
+   * Waits on the app (it opens a window, analyses something) and cuts the wait from the video:
+   * record.mjs removes the span, keeping `keep` ms at each end so the change still reads.
+   */
+  async idle(fn, {keep = 400} = {}) {
+    const start = Date.now();
+    try {
+      return await fn();
+    } finally {
+      const end = Date.now();
+      if (end - start > 2 * keep + 200) this.waits.push([start + keep, end - keep]);
+    }
   }
 }
