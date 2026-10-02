@@ -15,7 +15,10 @@ It runs on Linux, headless, with no person or Mac needed:
    and the moments the pointer settles, redraws the cursor from the log, and exports the MP4.
 
 Because the cursor is data and not pixels, the video gets the same redrawn cursor and click-driven
-zooms as a native Mac recording.
+zooms as a native Mac recording. That includes the cursor's shape (the hand over links and
+buttons, the I-beam in fields), read from the page's CSS and logged on every change.
+
+Last tested with Recorder-2 at `d1872ca` (Cursor motion blur).
 
 ## Setup
 

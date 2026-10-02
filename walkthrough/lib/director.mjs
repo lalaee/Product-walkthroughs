@@ -22,6 +22,32 @@ export class Director {
     this.log = [];
     this.beats = [];
     this.pos = null;
+    this.kind = null;
+    this.kindAt = 0;
+  }
+
+  /**
+   * The pointer's shape where it is now, as the browser would draw it: the hand over links and
+   * buttons, the I-beam over fields. Written to the log on change ({"cursor": …}), checked at most
+   * every 100 ms while moving (as Recordly's own recorder does) and always when the pointer stops.
+   */
+  async #shape({force = false} = {}) {
+    if (!force && Date.now() - this.kindAt < 100) return;
+    this.kindAt = Date.now();
+    const {x, y} = this.pos;
+    const kind = await this.page.evaluate(([x, y]) => {
+      const el = document.elementFromPoint(x, y);
+      if (!el) return 'arrow';
+      const c = getComputedStyle(el).cursor;
+      if (c === 'pointer') return 'pointer';
+      if (c === 'text' || c === 'vertical-text') return 'text';
+      if (c === 'auto' && (el.isContentEditable || el.matches('textarea, input:not([type=checkbox]):not([type=radio]):not([type=button]):not([type=submit]):not([type=range]):not([type=color]):not([type=file])'))) return 'text';
+      return 'arrow';
+    }, [x, y]).catch(() => this.kind ?? 'arrow');
+    if (kind !== this.kind) {
+      this.kind = kind;
+      this.#write({cursor: kind});
+    }
   }
 
   /** Boxes of the `show` targets, noting any that aren't on screen. */
@@ -62,6 +88,7 @@ export class Director {
   /** Puts the pointer somewhere without travelling (before recording starts). */
   async park(x, y) {
     await this.#moveRaw(x, y);
+    await this.#shape({force: true});
   }
 
   async #point(target) {
@@ -88,6 +115,7 @@ export class Director {
       const k = Math.min(1, (Date.now() - t0) / duration);
       const e = ease(k), arc = Math.sin(Math.PI * k) * bend;
       await this.#moveRaw(Math.round(from.x + (to.x - from.x) * e + nx * arc), Math.round(from.y + (to.y - from.y) * e + ny * arc));
+      await this.#shape({force: k >= 1});
       if (k >= 1) break;
       await sleep(16);
     }
@@ -105,7 +133,10 @@ export class Director {
     await sleep(70);
     await this.page.mouse.up();
     this.#write({click: 'up', button: 0, x: p.x + this.origin.x, y: p.y + this.origin.y});
-    await sleep(hold);
+    // what's under the pointer may have changed (a dialog closed, a page opened)
+    await sleep(Math.min(hold, 150));
+    await this.#shape({force: true});
+    await sleep(Math.max(0, hold - 150));
     await done();
   }
 

@@ -103,6 +103,9 @@ const lines = d.log.filter(l => l.t >= startedAt).sort((a, b) => a.t - b.t);
 // the pointer's resting place at the start, so the cursor is there from the first frame
 const parked = d.log.find(l => 'x' in l && !('click' in l));
 if (parked) lines.unshift({...parked, t: startedAt});
+// and its shape then
+const shapeBefore = d.log.filter(l => l.cursor && l.t < startedAt).at(-1);
+if (shapeBefore) lines.splice(1, 0, {...shapeBefore, t: startedAt});
 writeFileSync(join(folder, 'cursor.ndjson'), lines.map(l => JSON.stringify(l)).join('\n') + '\n');
 writeFileSync(
   join(folder, 'recording.json'),
