@@ -56,7 +56,7 @@ export class Director {
   }
 
   async #box(target) {
-    if (isPoint(target)) return {x: target.x - 4, y: target.y - 4, w: 8, h: 8};
+    if (isPoint(target)) return 'w' in target ? {x: target.x, y: target.y, w: target.w, h: target.h} : {x: target.x - 4, y: target.y - 4, w: 8, h: 8};
     return this.#thinking(() => this.s.box(target).catch(() => null));
   }
 
@@ -180,6 +180,14 @@ export class Director {
     const parts = key.split('+'), mods = parts.slice(0, -1).map(m => ({Control: 'ctrl', Ctrl: 'ctrl', Shift: 'shift', Alt: 'alt', Meta: 'cmd'})[m] ?? m.toLowerCase());
     if (mods.some(m => m !== 'shift')) this.#write({key: parts.at(-1).toUpperCase(), mods});
     await this.s.press(key);
+    await sleep(hold);
+    await done();
+  }
+
+  /** Scrolls the page smoothly until the target is in the middle of the view. */
+  async scroll(target, {hold = 700, show, label} = {}) {
+    const done = await this.#beat('scroll', label ?? `scroll to ${target}`, null, Date.now(), show ?? target);
+    await this.s.scrollTo(target);
     await sleep(hold);
     await done();
   }

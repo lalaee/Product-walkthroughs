@@ -41,6 +41,11 @@ export class PageSurface {
   clickable(target) {
     return this.#loc(target).first().evaluate(new Function('el', `return (${CLICKABLE})(el)`), null, {timeout: 1000});
   }
+  /** Scrolls smoothly, as a person would, until the target is in the middle of the view. */
+  async scrollTo(target) {
+    await this.#loc(target).first().evaluate(e => e.scrollIntoView({behavior: 'smooth', block: 'center'}));
+    await new Promise(r => setTimeout(r, 900));
+  }
   text(target) {
     return this.#loc(target).first().innerText({timeout: 1000});
   }
@@ -177,6 +182,10 @@ export class DesktopSurface {
     }
     await locator.first().scrollIntoViewIfNeeded({timeout: 5000}).catch(() => {});
     return this.box(locator);
+  }
+  async scrollTo(locator) {
+    await locator.first().evaluate(e => e.scrollIntoView({behavior: 'smooth', block: 'center'}));
+    await new Promise(r => setTimeout(r, 900));
   }
   clickable(locator) {
     if (locator.resolve) return Promise.resolve(!!locator.clickable);

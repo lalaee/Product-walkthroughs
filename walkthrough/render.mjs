@@ -35,8 +35,9 @@ const aspect = arg('aspect', meta.aspect ?? 'native');
 const quality = arg('quality', 'original');
 const fps = arg('fps', '60');
 const projectFile = join(library, 'Projects', readdirSync(join(library, 'Projects')).find(f => f.endsWith('.recordly')));
-const project = basename(projectFile).replace(/\.recordly$/, '');
 const saved = JSON.parse(readFileSync(projectFile, 'utf8'));
+// Recordly lists a project by its name (the file name is that name made safe: "?" becomes "-")
+const project = saved.name ?? basename(projectFile).replace(/\.recordly$/, '');
 if (process.argv.includes('--fresh') && saved.doc) {
   delete saved.doc;
   writeFileSync(projectFile, JSON.stringify(saved));

@@ -307,13 +307,15 @@ if (fix) {
       const after = Math.min(isHook ? hookEnd - 0.6 : Infinity, ...doc.zooms.filter(z => z.start >= (b.t + b.end) / 2).map(z => z.start - GLIDE), ...beats.filter(n => n.zoom && n.t > b.t).map(n => n.t - 0.2 - GLIDE));
       const before0 = before;
       for (const z of doc.zooms) if (z.end > b.t - 0.2 - GLIDE && z.start < b.t) z.end = Math.max(z.start + 0.6, Math.min(z.end, b.t - 0.2 - GLIDE));
+      // and not before the action ahead of it has played out (what that one needs may not fit)
+      const prevEnd = Math.max(0, ...beats.filter(p => p !== b && p.end <= b.t + 0.01).map(p => p.end));
       const amount = Math.min(b.zoom, MAX_AMOUNT, Math.floor(capFor(need) * 10) / 10);
       if (amount < MIN_ZOOM) {
         tooBig.add(i);
         lines.push(`- ${b.t.toFixed(1)} s ${b.label}: wanted a ${b.zoom}× zoom, but what it needs (${need.w}×${need.h}) only fits at ${amount}×; left unzoomed`);
         continue;
       }
-      const z = {id: `zm-flow-${i}`, start: +Math.max(before0, b.t - 0.8, ...doc.zooms.filter(z => z.start < b.t).map(z => z.end + gapAfter(z))).toFixed(2), end: +Math.min(after, b.end + 0.9).toFixed(2), amount, mode: 'manual', focus: {x: +(((need.x + need.w / 2) / W) * 100).toFixed(2), y: +(((need.y + need.h / 2) / H) * 100).toFixed(2)}};
+      const z = {id: `zm-flow-${i}`, start: +Math.max(before0, b.t - 0.8, prevEnd, ...doc.zooms.filter(z => z.start < b.t).map(z => z.end + gapAfter(z))).toFixed(2), end: +Math.min(after, b.end + 0.9).toFixed(2), amount, mode: 'manual', focus: {x: +(((need.x + need.w / 2) / W) * 100).toFixed(2), y: +(((need.y + need.h / 2) / H) * 100).toFixed(2)}};
       doc.zooms.push(z);
       doc.zooms.sort((a, c) => a.start - c.start);
       lines.push(`- ${z.start.toFixed(1)}–${z.end.toFixed(1)} s: added a ${amount}× zoom on ${b.label}, as the flow asked`);

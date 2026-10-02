@@ -213,6 +213,21 @@ zoom. Hold after a click that changes the screen, so the viewer sees what happen
   `videos/recordly-record-review.png`. It was recorded before the hook, plan and readability
   changes. Recordly's own recording inside it runs at about 9 fps at this density on a machine
   without a GPU, so its playback in the preview is choppy.
+- `videos/umami-traffic.mp4`: [Umami](https://github.com/umami-software/umami) finding out where a
+  spike in traffic came from. It opens on the answer, then switches Taskly's dashboard to the last
+  30 days, points at the one day that towers over the rest, scrolls to Sources and clicks
+  news.ycombinator.com, and the dashboard filters to it: 491 visitors from Hacker News. Umami is the
+  real app (v3.4.0 built from source, on Postgres 16, unmodified). The traffic is made up but sent
+  through Umami's own tracking endpoint (`/api/send`), the same one its tracker script calls
+  (`flows/umami/traffic.mjs`: a seeded month of visits that grows, dips at weekends and spikes the
+  day Taskly was on Hacker News), so every number on screen is Umami's own count. Site icons come
+  from an online service this machine can't reach: Taskly's is its logo, every other site gets a
+  grey letter tile (not that site's logo). 17.8 s, 1920×1200 (16:10) at 60 fps, all checks passed.
+  Poster, share copy, plan and contact sheet alongside (`videos/umami-traffic*`).
+  Setup: Postgres with a database `umami` (user and password `umami`), then in a clone of Umami
+  `.env` with `DATABASE_URL=postgresql://umami:umami@localhost:5432/umami`, `pnpm install`,
+  `pnpm build` and `PORT=3100 pnpm start` (or set `UMAMI_URL`). Each run starts from one fresh
+  Taskly website (it deletes the others), signed in as Umami's default admin.
 - `videos/localsend-send.mp4`: [LocalSend](https://github.com/localsend/localsend) sending a photo
   from the PC to a phone nearby, on the Windows 11 desktop. LocalSend is the real app (the v1.18.2
   Linux release, unmodified), driven by OCR. The phone is a stand-in: `flows/localsend/peer.mjs` is
