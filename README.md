@@ -197,11 +197,14 @@ zoom. Hold after a click that changes the screen, so the viewer sees what happen
 
 ## Videos
 
-- `videos/recordly-record.mp4`: Recordly recording a fresh screen on a 1440×900 desktop, as a
-  1440×900 (16:10) video. Start a new recording, hide the recorder, create a project in Taskly
-  while it records, stop with Ctrl+Shift+2, land in the editor with zooms suggested from the clicks,
-  trim off the start, and play it back. 38 s, 60 fps, reviewed and fixed (all 15 actions in view,
-  peak zoom speed 3.0 doublings/s); contact sheet `videos/recordly-record-review.png`.
+- `videos/recordly-record.mp4`: Recordly recording a fresh screen on a 1440×900 desktop drawn at
+  8/3 pixel density: 3840×2400, 4K at 16:10. It starts a new recording, hides the recorder,
+  creates a project in Taskly while it records, stops with Ctrl+Shift+2, lands in the editor
+  (asking for zooms when Recordly hasn't suggested them), trims off the start, and plays it back.
+  43.8 s at 60 fps, reviewed and fixed (all 16 actions in view); contact sheet
+  `videos/recordly-record-review.png`. It was recorded before the hook, plan and readability
+  changes. Recordly's own recording inside it runs at about 9 fps at this density on a machine
+  without a GPU, so its playback in the preview is choppy.
 - `videos/recordly-windows.mp4`: Recordly on a Windows 11 desktop, starting from its recorder bar,
   with Taskly already open. It opens on the payoff (the recording playing back, zoomed in), then
   records with a 3× countdown, creates a project in Taskly, stops with Ctrl+Shift+2, points out the
