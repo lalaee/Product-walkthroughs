@@ -249,13 +249,18 @@ zoom. Hold after a click that changes the screen, so the viewer sees what happen
   share copy, plan and contact sheet alongside (`videos/localsend-send*`).
   Setup: the LocalSend Linux release in `/home/user/apps/localsend` (or `LOCALSEND_APP`), and
   `apt-get install tesseract-ocr feh libayatana-appindicator3-1 libegl1 libgl1`.
-- `videos/recordly-windows.mp4`: Recordly on a Windows 11 desktop, starting from its recorder bar,
-  with Taskly already open. It opens on the payoff (the recording playing back, zoomed in), then
-  records with a 3× countdown, creates a project in Taskly, stops with Ctrl+Shift+2, points out the
-  suggested zoom and plays it back. The trim is done off-camera. 24.6 s, 1920×1080 at 60 fps,
-  reviewed and fixed (all actions in view and readable, plan met). Also: the poster
-  `videos/recordly-windows.jpg` (frame 0 of the video), `videos/recordly-windows-share.txt`, the
-  plan `videos/recordly-windows-plan.md` and the contact sheet `videos/recordly-windows-review.png`.
+- `videos/recordly-windows.mp4`: how to record on Windows with Recordly, as a tutorial from start
+  to finish on a Windows 11 desktop with Taskly open. From Recordly's home: New recording, Choose
+  what to record (the entire screen, from Recordly's own picker of screens and windows), Record
+  with a 3× countdown, create a project in Taskly, stop with Ctrl+Shift+2, the zoom Recordly
+  suggested from the clicks, playback, and Export → "Your video is ready". Recordly is the real app,
+  run with its interface as it is on Windows (`launchRecordly({platform: 'win'})`): a preload of ours
+  reports Windows before Recordly's own reads the platform, so the recorder offers its screen and
+  window picker and the window has Windows buttons. Underneath it runs on Linux: the capture, the
+  picker's sources and the export are this machine's. Two things are off camera, in cuts: trimming
+  the recorder bar off the start of the recording (on Linux it ends up in it, where Windows would
+  leave it out), and the wait while the export runs. Poster, share copy, plan and contact sheet
+  alongside (`videos/recordly-windows*`).
 - `videos/demo-taskly.mp4`: the pipeline on the bundled demo page (`demo-app/`): create a project,
   open it, add two tasks, tick one off. 27 s, 1080p60, smooth motion, reviewed and fixed (all
   11 actions in view, peak zoom speed 2.6 doublings/s); its contact sheet is `videos/demo-taskly-review.png`.
