@@ -103,7 +103,7 @@ export async function run(d, ctx) {
   await d.click(main.getByRole('button', {name: 'New recording'}).last(), {hold: 1000, show: bar, label: 'New recording'});
   // 2. what to record: the entire screen
   const picker = overlay.getByRole('dialog');
-  await d.click(overlay.getByRole('button', {name: 'Choose what to record'}), {hold: 1500, show: picker, label: 'Choose what to record'});
+  await d.click(overlay.getByRole('button', {name: 'Choose what to record'}), {hold: 2400, show: picker, label: 'Choose what to record'});
   await d.click(picker.getByText('Entire screen'), {hold: 1000, show: bar, label: 'Entire screen'});
   // 3. record Taskly, stop
   const trimAt = await recordTaskly(d, ctx);
