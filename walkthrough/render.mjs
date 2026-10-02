@@ -2,13 +2,15 @@
 // lets Recordly suggest zooms from the clicks and pauses, and exports an MP4 with its own exporter.
 //
 //   node walkthrough/render.mjs out/<flow> [--motion smooth|focused] [--fresh] [--aspect 1:1|16:9|…] [--quality original|high|standard]
-//                               [--fps 60|30] [--recordly ../recorder-2]
+//                               [--fps 60|30] [--cursor 2.5] [--recordly ../recorder-2]
 //
 // Needs Recorder-2 cloned and built (npm ci && npm run build:native && npm run build).
 // Motion is Recordly's zoom preset: smooth (default) = 1.1 s eased in-out camera moves, fewer and
 // longer zooms; focused = 0.45 s snappy moves, more and tighter zooms. Recordly suggests zooms
 // once, when it first opens a project; --fresh discards the saved edit (and any review fixes) so it
 // suggests again, e.g. after changing --motion.
+// --cursor is the size of Recordly's cursor (its Cursor → Size, 0.5–10×; Recordly's own default is
+// 1.5×, small at walkthrough sizes).
 // Writes <out>/<flow>.mp4 and <out>/editor.png (the editor's timeline, to check the zooms).
 import {existsSync, mkdtempSync, readFileSync, readdirSync, renameSync, statSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
@@ -34,6 +36,7 @@ const meta = existsSync(join(out, 'walkthrough.json')) ? JSON.parse(readFileSync
 const aspect = arg('aspect', meta.aspect ?? 'native');
 const quality = arg('quality', 'original');
 const fps = arg('fps', '60');
+const cursorSize = Number(arg('cursor', '2.5'));
 const projectFile = join(library, 'Projects', readdirSync(join(library, 'Projects')).find(f => f.endsWith('.recordly')));
 const saved = JSON.parse(readFileSync(projectFile, 'utf8'));
 // Recordly lists a project by its name (the file name is that name made safe: "?" becomes "-")
@@ -55,7 +58,7 @@ try {
   main.setDefaultTimeout(30_000);
   await main.setViewportSize({width: 1440, height: 900}).catch(() => {});
 
-  console.log(`opening "${project}" in Recordly (${motion} zooms, ${aspect} shape)…`);
+  console.log(`opening "${project}" in Recordly (${motion} zooms, ${aspect} shape, ${cursorSize}× cursor)…`);
   await main.locator('[role=gridcell]', {hasText: project}).first().dblclick();
   await main.locator('canvas[aria-label=Preview]').waitFor();
   await main.waitForTimeout(3000);
@@ -67,6 +70,18 @@ try {
     await main.waitForTimeout(1500);
     if ((await shape.innerText()).trim() !== (aspect === 'native' ? 'Native' : aspect)) throw new Error(`couldn't set the video shape to ${aspect}`);
   }
+  // the cursor's size, through the Cursor panel's slider (by keyboard: 0.1× a step)
+  await main.getByRole('tablist', {name: 'Editing areas'}).getByRole('tab', {name: 'Cursor'}).click();
+  const slider = main.getByRole('tabpanel').getByRole('slider', {name: /^Size/}).first();
+  await slider.focus();
+  for (let i = 0; i < 100; i++) {
+    const now = Number(await slider.evaluate(e => e.value ?? e.getAttribute('aria-valuenow')));
+    if (Math.abs(now - cursorSize) < 0.05) break;
+    await main.keyboard.press(now < cursorSize ? 'ArrowRight' : 'ArrowLeft');
+  }
+  const size = Number(await slider.evaluate(e => e.value ?? e.getAttribute('aria-valuenow')));
+  if (Math.abs(size - cursorSize) >= 0.05) throw new Error(`couldn't set the cursor size to ${cursorSize}× (it's ${size}×)`);
+  await main.waitForTimeout(800);
   const zooms = await main.getByRole('button', {name: /Auto \(follows cursor\)|Manual focus/}).count();
   await main.mouse.move(2, 2);
   await main.screenshot({path: join(out, 'editor.png')});

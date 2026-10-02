@@ -109,7 +109,9 @@ numbers catch framing; the sheet is for what they can't catch, like the wrong st
 appears too late, or motion blur on the frame that matters.
 
 `record.mjs` takes `--size 1920x1080` and `--fps 60`. `render.mjs` takes `--motion smooth|focused`,
-`--quality original|high|standard` and `--fps 60|30`. The motion setting picks one of Recordly's
+`--quality original|high|standard`, `--fps 60|30` and `--cursor 2.5`. The cursor setting is
+Recordly's own cursor size (Cursor → Size, 0.5–10×), set in the editor before exporting. It
+defaults to 2.5× here; Recordly's own default of 1.5× is small at walkthrough sizes. The motion setting picks one of Recordly's
 zoom presets:
 
 - **smooth** (the default): 1.1 s eased in-out camera moves and fewer, longer zooms.
