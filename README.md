@@ -260,7 +260,8 @@ zoom. Hold after a click that changes the screen, so the viewer sees what happen
   picker's sources and the export are this machine's. Two things are off camera, in cuts: trimming
   the recorder bar off the start of the recording (on Linux it ends up in it, where Windows would
   leave it out), and the wait while the export runs. Poster, share copy, plan and contact sheet
-  alongside (`videos/recordly-windows*`).
+  alongside (`videos/recordly-windows*`). 35.1 s, 1920×1080 at 60 fps; all checks pass but one
+  readability hold (the picker is steady for 1.9 s of the 2.0 s its 24 words want).
 - `videos/demo-taskly.mp4`: the pipeline on the bundled demo page (`demo-app/`): create a project,
   open it, add two tasks, tick one off. 27 s, 1080p60, smooth motion, reviewed and fixed (all
   11 actions in view, peak zoom speed 2.6 doublings/s); its contact sheet is `videos/demo-taskly-review.png`.

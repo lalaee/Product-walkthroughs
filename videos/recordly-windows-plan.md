@@ -1,21 +1,23 @@
-# Recordly — record on Windows
+# Recordly — how to record on Windows
 
 **What it is:** Recordly records your screen and turns it into a polished video, zooming in where you clicked.
 **For:** People who make product demos and walkthroughs on Windows.
-**Hook:** Open on the payoff: the finished recording already playing back in Recordly, zoomed in on the click.
 
 ## The flow
 
-- The recorder bar is up over Taskly, open on the desktop
+- Recordly is open; Taskly is the app to record
+- New recording: the recorder bar
+- Choose what to record: the entire screen
 - Record: 3, 2, 1
 - Create a project in Taskly while it records
 - Stop with Ctrl+Shift+2
 - Recordly has already suggested a zoom from the clicks
 - Play it back
+- Export: the MP4 is ready
 
 ## Checks
 
-- Length: 15–25 s
-- "Record" by 7 s
-- "Stop (Ctrl+Shift+2)" by 18 s
-- "Play" by 23 s
+- Length: 30–50 s
+- "Record" by 12 s
+- "Stop (Ctrl+Shift+2)" by 26 s
+- "Export" by 40 s
