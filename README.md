@@ -92,6 +92,25 @@ the zooms landed.
 To re-render with other settings, run `render.mjs` again. The recording is kept, so there's no need
 to record again.
 
+## Desktop flows
+
+A page flow drives one web page and captures only that page. A **desktop flow** captures the
+whole screen of a virtual desktop and uses real system input (`xdotool`), so it can span several
+windows and record apps that watch the real pointer. `flows/recordly-record.mjs` uses one to record
+Recordly itself: Recordly's own recorder captures the screen and logs clicks while the walkthrough
+is being recorded.
+
+It exports `desktop = true` and `launch({env, desktop, out, width, height, recordly})`. `launch`
+starts the apps and registers each page with `desktop.register(page, origin)`, where `origin()`
+returns the page's top-left on screen. It returns what `run(d, ctx)` needs, plus `close()`. Targets
+are then Playwright locators in those pages, and the director moves the real pointer to them. The
+cursor's shape is the system cursor's, read through Recordly's native module.
+
+Needs `apt-get install xdotool openbox xcompmgr`. openbox gives windows stacking, focus and
+always-on-top, and xcompmgr makes see-through windows such as Recordly's floating recorder draw.
+If a flow fails, `failure.png` is the screen at that moment, and the Recordly flow keeps
+Recordly's log in `recordly.log`.
+
 ## Writing a flow
 
 A flow is a module in `flows/` that exports `name`, `url` and `run(d, page)`, and optionally
@@ -106,7 +125,10 @@ A flow is a module in `flows/` that exports `name`, `url` and `run(d, page)`, an
 | `d.point(target, {hold})` | hover something long enough for a soft zoom (default 1200 ms) |
 | `d.moveTo(target)` / `d.wait(ms)` | travel without clicking / pause |
 
-Targets are CSS selectors, Playwright locators or `{x, y}`. Every action takes `show`, a selector
+Targets are CSS selectors, Playwright locators or `{x, y}`. Every action takes `zoom` (an amount,
+or `true` for 1.8×) to ask for a zoom where Recordly might not suggest one. `review.mjs --fix` adds
+it, as far as still shows the target and its result, with a second's glide from the zoom before.
+Every action also takes `show`, a selector
 or locator (or a list of them) for what the viewer should see once it has played out, such as the
 dialog a button opens. The review keeps that in frame and fails the flow if it never appears.
 Without `show`, it uses whatever changed on screen, which is too much when a dialog dims the whole
@@ -118,6 +140,10 @@ zoom. Hold after a click that changes the screen, so the viewer sees what happen
 
 ## Videos
 
+- `videos/recordly-record.mp4`: Recordly recording a fresh screen. Start a new recording, count
+  down, create a project in Taskly while it records, stop, and land in the editor with a zoom
+  suggested from the clicks, then play it back. 46 s, 1080p60, reviewed and fixed (all 11 actions
+  in view, peak zoom speed 3.0 doublings/s); contact sheet `videos/recordly-record-review.png`.
 - `videos/demo-taskly.mp4`: the pipeline on the bundled demo page (`demo-app/`): create a project,
   open it, add two tasks, tick one off. 27 s, 1080p60, smooth motion, reviewed and fixed (all
   11 actions in view, peak zoom speed 2.6 doublings/s); its contact sheet is `videos/demo-taskly-review.png`.

@@ -1,24 +1,31 @@
-// Drives the page like a person presenting it: the pointer travels on eased, slightly curved paths,
-// clicks are deliberate and followed by a beat, typing is readable. Every pointer position and
-// click is written to Recordly's cursor log (wall-clock ms, screen coordinates), which is what its
-// redrawn cursor, click effects and auto-zooms are made from.
+// Drives the app like a person presenting it: the pointer travels on eased, slightly curved paths,
+// clicks are deliberate and followed by a beat, typing is readable. Every pointer position, click
+// and change of cursor shape is written to Recordly's cursor log (wall-clock ms, recording
+// coordinates), which is what its redrawn cursor, click effects and auto-zooms are made from.
+//
+// It drives a surface (lib/surfaces.mjs): one browser page (PageSurface, input sent into the page),
+// or the whole desktop (DesktopSurface, real system input that every window sees, for flows across
+// several apps, or apps like Recordly that watch the real pointer).
 //
 // Pacing matters for the zooms: Recordly zooms in on clicks, and on "settles" (the pointer moved,
 // then stayed put for ~0.8 s). Clicks closer than ~2 s apart merge into one longer zoom.
 //
-// Each action is also written down as a "beat" (what it was, when, and where on the page its target
-// and result are) so review.mjs can check every zoom against what the viewer needs to see. Pass
-// `show` (a selector or locator) to say what the viewer should see after an action, e.g. the dialog
-// a button opens; without it the review works it out from what changed on screen.
+// Each action is also written down as a "beat" (what it was, when, and where its target and result
+// are) so review.mjs can check every zoom against what the viewer needs to see. Pass `show` (a
+// selector or locator, or a list) to say what the viewer should see after an action, e.g. the dialog
+// a button opens; without it the review works it out from what changed on screen. Pass `zoom` (an
+// amount, or true for 1.8×) to want a zoom on an action even where Recordly suggests none; review.mjs
+// --fix adds it, as far as still shows the action's target and result.
+import {PageSurface} from './surfaces.mjs';
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const ease = t => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
+const isPoint = t => t && typeof t === 'object' && 'x' in t && 'y' in t && !('boundingBox' in t);
 
 export class Director {
-  /** @param {import('playwright-core').Page} page  @param {{x:number,y:number}} origin  the page's top-left on screen */
-  constructor(page, origin = {x: 0, y: 0}) {
-    this.page = page;
-    this.origin = origin;
+  /** @param {import('./surfaces.mjs').PageSurface | import('./surfaces.mjs').DesktopSurface | import('playwright-core').Page} surface */
+  constructor(surface) {
+    this.s = 'mouse' in surface ? new PageSurface(surface) : surface;
     this.log = [];
     this.beats = [];
     this.pos = null;
@@ -26,30 +33,24 @@ export class Director {
     this.kindAt = 0;
   }
 
-  /**
-   * The pointer's shape where it is now, as the browser would draw it: the hand over links and
-   * buttons, the open hand over things to drag (Recordly closes it while the button is held), the
-   * I-beam over fields. Written to the log on change ({"cursor": …}), checked at most
-   * every 100 ms while moving (as Recordly's own recorder does) and always when the pointer stops.
-   */
+  #write(entry) {
+    this.log.push({t: Date.now(), ...entry});
+  }
+
+  /** The pointer's shape (hand, open hand, I-beam, arrow), logged on change; at most every 100 ms while moving. */
   async #shape({force = false} = {}) {
     if (!force && Date.now() - this.kindAt < 100) return;
     this.kindAt = Date.now();
-    const {x, y} = this.pos;
-    const kind = await this.page.evaluate(([x, y]) => {
-      const el = document.elementFromPoint(x, y);
-      if (!el) return 'arrow';
-      const c = getComputedStyle(el).cursor;
-      if (c === 'pointer') return 'pointer';
-      if (c === 'grab' || c === 'grabbing') return 'grab';
-      if (c === 'text' || c === 'vertical-text') return 'text';
-      if (c === 'auto' && (el.isContentEditable || el.matches('textarea, input:not([type=checkbox]):not([type=radio]):not([type=button]):not([type=submit]):not([type=range]):not([type=color]):not([type=file])'))) return 'text';
-      return 'arrow';
-    }, [x, y]).catch(() => this.kind ?? 'arrow');
+    const kind = (await this.s.shape(this.pos).catch(() => null)) ?? this.kind ?? 'arrow';
     if (kind !== this.kind) {
       this.kind = kind;
       this.#write({cursor: kind});
     }
+  }
+
+  async #box(target) {
+    if (isPoint(target)) return {x: target.x - 4, y: target.y - 4, w: 8, h: 8};
+    return this.s.box(target).catch(() => null);
   }
 
   /** Boxes of the `show` targets, noting any that aren't on screen. */
@@ -61,15 +62,10 @@ export class Director {
     if (missing.length) beat.showMissing = missing.join(', ');
   }
 
-  async #box(target) {
-    if (typeof target === 'string') target = this.page.locator(target);
-    const b = await target.first().boundingBox({timeout: 1000}).catch(() => null);
-    return b && {x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.width), h: Math.round(b.height)};
-  }
-
   /** Notes an action for the review: its target's box now, the `show` boxes once it has played out. */
-  async #beat(action, label, target, t, show) {
-    const beat = {action, label: label ?? (typeof target === 'string' ? target : String(target)), t, target: target && typeof target === 'object' && 'x' in target && !('boundingBox' in target) ? {x: target.x - 4, y: target.y - 4, w: 8, h: 8} : target ? await this.#box(target) : null};
+  async #beat(action, label, target, t, show, zoom) {
+    const beat = {action, label: label ?? (typeof target === 'string' ? target : String(target)), t, target: target ? await this.#box(target) : null};
+    if (zoom) beat.zoom = zoom === true ? 1.8 : zoom;
     this.beats.push(beat);
     return async () => {
       beat.end = Date.now();
@@ -77,14 +73,10 @@ export class Director {
     };
   }
 
-  #write(entry) {
-    this.log.push({t: Date.now(), ...entry});
-  }
-
   async #moveRaw(x, y) {
-    await this.page.mouse.move(x, y);
+    await this.s.move(x, y);
     this.pos = {x, y};
-    this.#write({x: x + this.origin.x, y: y + this.origin.y});
+    this.#write({x, y});
   }
 
   /** Puts the pointer somewhere without travelling (before recording starts). */
@@ -94,15 +86,13 @@ export class Director {
   }
 
   async #point(target) {
-    if (typeof target === 'string') target = this.page.locator(target);
-    if (target && 'x' in target && 'y' in target && !('boundingBox' in target)) return target;
-    await target.first().scrollIntoViewIfNeeded();
-    const b = await target.first().boundingBox();
+    if (isPoint(target)) return target;
+    const b = await this.s.point(target);
     if (!b) throw new Error(`not visible: ${target}`);
-    return {x: Math.round(b.x + b.width / 2), y: Math.round(b.y + b.height / 2)};
+    return {x: Math.round(b.x + b.w / 2), y: Math.round(b.y + b.h / 2)};
   }
 
-  /** Travels to a locator, selector or {x, y}. */
+  /** Travels to a target: a locator, a selector (page flows) or {x, y}. */
   async moveTo(target, {duration} = {}) {
     const to = await this.#point(target);
     const from = this.pos ?? to;
@@ -125,16 +115,16 @@ export class Director {
   }
 
   /** Moves to the target and clicks it, then holds for `hold` ms so the viewer sees the result. */
-  async click(target, {hold = 700, show, label} = {}) {
-    const done = await this.#beat('click', label, target, null, show);
+  async click(target, {hold = 700, show, label, zoom} = {}) {
+    const done = await this.#beat('click', label, target, null, show, zoom);
     const p = await this.moveTo(target);
     await sleep(140);
     this.beats.at(-1).t ??= Date.now();
-    this.#write({click: 'down', button: 0, x: p.x + this.origin.x, y: p.y + this.origin.y});
-    await this.page.mouse.down();
+    this.#write({click: 'down', button: 0, x: p.x, y: p.y});
+    await this.s.down();
     await sleep(70);
-    await this.page.mouse.up();
-    this.#write({click: 'up', button: 0, x: p.x + this.origin.x, y: p.y + this.origin.y});
+    await this.s.up();
+    this.#write({click: 'up', button: 0, x: p.x, y: p.y});
     // what's under the pointer may have changed (a dialog closed, a page opened)
     await sleep(Math.min(hold, 150));
     await this.#shape({force: true});
@@ -143,28 +133,29 @@ export class Director {
   }
 
   /** Clicks a field and types into it at a readable pace. */
-  async type(target, text, {delay = 55, hold = 500, show, label} = {}) {
-    await this.click(target, {hold: 250, label: label ?? `type "${text}"`});
+  async type(target, text, {delay = 55, hold = 500, show, label, zoom} = {}) {
+    await this.click(target, {hold: 250, label: label ?? `type "${text}"`, zoom});
     const beat = this.beats.at(-1);
     beat.action = 'type';
-    await this.page.keyboard.type(text, {delay});
+    await this.s.type(text, delay);
     await sleep(hold);
     beat.end = Date.now();
     beat.target = (await this.#box(target)) ?? beat.target;
     if (show) await this.#shows(beat, show);
   }
 
-  async press(key, {hold = 600, show, label} = {}) {
-    const done = await this.#beat('press', label ?? `press ${key}`, null, Date.now(), show);
-    await this.page.keyboard.press(key);
+  /** Presses a key (Playwright names: Enter, Escape, Tab, Space…). */
+  async press(key, {hold = 600, show, label, zoom} = {}) {
+    const done = await this.#beat('press', label ?? `press ${key}`, null, Date.now(), show, zoom);
+    await this.s.press(key);
     await sleep(hold);
     await done();
   }
 
   /** Hovers over something long enough to count as a settle (a soft zoom). */
-  async point(target, {hold = 1200, show, label} = {}) {
+  async point(target, {hold = 1200, show, label, zoom} = {}) {
     await this.moveTo(target);
-    const done = await this.#beat('point', label, target, Date.now(), show);
+    const done = await this.#beat('point', label, target, Date.now(), show, zoom);
     await sleep(hold);
     await done();
   }

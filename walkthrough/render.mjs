@@ -13,8 +13,8 @@
 import {mkdtempSync, readFileSync, readdirSync, renameSync, statSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {basename, join, resolve} from 'node:path';
-import {_electron as electron} from 'playwright-core';
 import {startDisplay} from './lib/display.mjs';
+import {launchRecordly, recordlyDir} from './lib/recordly.mjs';
 
 const arg = (name, fallback) => {
   const i = process.argv.indexOf(`--${name}`);
@@ -27,8 +27,7 @@ if (!outArg || outArg.startsWith('--')) {
 }
 const out = resolve(outArg);
 const library = join(out, 'library');
-const recordly = resolve(arg('recordly', process.env.RECORDLY_DIR ?? join(import.meta.dirname, '..', '..', 'recorder-2')));
-const desktop = join(recordly, 'apps', 'desktop');
+const recordly = recordlyDir(arg('recordly'));
 const motion = arg('motion', 'smooth');
 const quality = arg('quality', 'original');
 const fps = arg('fps', '60');
@@ -42,37 +41,13 @@ if (process.argv.includes('--fresh') && saved.doc) {
   console.warn(`note: the project's zooms were made with the ${saved.doc.motion?.preset} preset; add --fresh to redo them as ${motion}`);
 }
 
-const userData = mkdtempSync(join(tmpdir(), 'recordly-render-'));
 const downloads = mkdtempSync(join(tmpdir(), 'recordly-export-'));
-writeFileSync(
-  join(userData, 'state.json'),
-  JSON.stringify({
-    onboarded: true,
-    settings: {autoZooms: true, connectZooms: true, motionPreset: motion, hideRecorder: true, recordingsPath: library, experimentalUpdates: false},
-    recorder: {sourceId: null, micOn: false, micId: null, sysAudio: false, camOn: false, camId: null, countdown: 3, floatingPreview: true}
-  })
-);
-
 const screen = await startDisplay({width: 1920, height: 1200});
-const app = await electron.launch({
-  executablePath: join(recordly, 'node_modules', 'electron', 'dist', 'electron'),
-  cwd: desktop,
-  args: ['.', '--no-sandbox', `--user-data-dir=${userData}`, '--autoplay-policy=no-user-gesture-required'],
-  env: {...process.env, DISPLAY: screen.display},
-  timeout: 60_000
-});
-const log = [];
-app.process().stderr?.on('data', d => log.push(String(d)));
-await app.evaluate(({app}, dir) => app.setPath('downloads', dir), downloads);
+const recordlyApp = await launchRecordly({dir: recordly, env: {...process.env, DISPLAY: screen.display}, library, motion, downloads});
+const {log} = recordlyApp;
 
 try {
-  let main = null;
-  const until = Date.now() + 30_000;
-  while (!main && Date.now() < until) {
-    for (const w of app.windows()) if ((await w.evaluate(() => window.recordly?.window).catch(() => null)) === 'main') main = w;
-    if (!main) await new Promise(r => setTimeout(r, 300));
-  }
-  if (!main) throw new Error("Recordly's main window didn't open");
+  const main = await recordlyApp.window('main');
   main.setDefaultTimeout(30_000);
   await main.setViewportSize({width: 1440, height: 900}).catch(() => {});
 
@@ -112,6 +87,6 @@ try {
   if (tail) console.error(`Recordly's log:\n${tail}`);
   process.exitCode = 1;
 } finally {
-  await app.close().catch(() => {});
+  await recordlyApp.close();
   screen.stop();
 }

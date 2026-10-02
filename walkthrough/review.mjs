@@ -21,6 +21,7 @@ import {tmpdir} from 'node:os';
 import {basename, join, resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {chromium} from 'playwright-core';
+import {recordlyDir} from './lib/recordly.mjs';
 
 const arg = (name, fallback) => {
   const i = process.argv.indexOf(`--${name}`);
@@ -44,7 +45,7 @@ const MIN_ZOOM = 1.3; // below this a zoom isn't worth its motion
 // ---------------------------------------------------------------- camera
 // Recordly's own camera and cursor code (bundled from Recorder-2's source), so the view computed
 // here is the one its exporter draws: zoom ramps, glides between connected zooms, the cursor follow.
-const recordly = resolve(arg('recordly', process.env.RECORDLY_DIR ?? join(import.meta.dirname, '..', '..', 'recorder-2')));
+const recordly = recordlyDir(arg('recordly'));
 const src = join(recordly, 'apps', 'desktop', 'src');
 const {build} = await import(pathToFileURL(join(recordly, 'node_modules', 'esbuild', 'lib', 'main.js')).href);
 const stub = {name: 'stub', setup(b) {
@@ -143,6 +144,8 @@ function check(d) {
     };
     const early = b.target ? span(b.t - 0.1, b.t + 0.3).map(s => !inside(b.target, viewAt(s, d), 0.85) && fail(s, 'target')).filter(Boolean) : [];
     const late = need ? span((b.t + b.end) / 2, b.end).map(s => !inside(need, viewAt(s, d)) && fail(s, 'need')).filter(Boolean) : [];
+    const zoomed = b.zoom && d.zooms.some(z => z.start < b.end && z.end > (b.t + b.end) / 2);
+    if (b.zoom && !zoomed) problems.push(`the flow wants a ${b.zoom}× zoom here, and there's none`);
     if (early.length) problems.push(`the ${b.action} target is out of view around the action (${early[0].s.toFixed(1)} s, ${early[0].v.amount}×)`);
     if (late.length) {
       const f = late.reduce((a, c) => (c.v.amount > a.v.amount ? c : a));
@@ -169,7 +172,7 @@ function motionOf(d) {
   }
   return {zoom, pan};
 }
-const MAX_ZOOM_SPEED = 3; // doublings per second
+const MAX_ZOOM_SPEED = 3.2; // smooth zooms to 2× peak right at 3 // doublings per second
 const MAX_PAN_SPEED = 1.2; // view widths per second
 
 // ---------------------------------------------------------------- contact sheet
@@ -226,7 +229,37 @@ for (const r of results) lines.push(`- ${r.problems.length ? '✗' : '✓'} ${St
 if (fix && failing.length) {
   // Recordly's camera is pure, so fixes are checked here before rendering: repeat until clean.
   lines.push('', '## Fixes');
-  for (let round = 0; round < 6; round++) {
+  // zooms the flow asked for where there's none: manual, on the action's target and result, from a
+  // moment before it until a moment after, kept clear of the zooms around it
+  const tooBig = new Set();
+  const addWanted = () => {
+    for (const [i, b] of beats.entries()) {
+      if (!b.zoom || tooBig.has(i) || doc.zooms.some(z => z.start < b.end && z.end > (b.t + b.end) / 2) || !needs[i].need) continue;
+      const need = needs[i].need;
+      const before = Math.max(0, ...doc.zooms.filter(z => z.end <= b.t).map(z => z.end + 0.2));
+      // until the next zoom, or the next action that wants its own
+      // A second between neighbouring zooms, so Recordly's glide from one to the other takes that
+      // second instead of snapping: this one ends a second before the next zoom (or the next action
+      // that wants its own), and a zoom running into this beat ends a second before this one starts.
+      const GLIDE = 1.0;
+      const after = Math.min(Infinity, ...doc.zooms.filter(z => z.start >= (b.t + b.end) / 2).map(z => z.start - GLIDE), ...beats.filter(n => n.zoom && n.t > b.t).map(n => n.t - 0.2 - GLIDE));
+      const before0 = before;
+      for (const z of doc.zooms) if (z.end > b.t - 0.2 - GLIDE && z.start < b.t) z.end = Math.max(z.start + 0.6, Math.min(z.end, b.t - 0.2 - GLIDE));
+      const amount = Math.min(b.zoom, Math.floor(capFor(need) * 10) / 10);
+      if (amount < MIN_ZOOM) {
+        tooBig.add(i);
+        lines.push(`- ${b.t.toFixed(1)} s ${b.label}: wanted a ${b.zoom}× zoom, but what it needs (${need.w}×${need.h}) only fits at ${amount}×; left unzoomed`);
+        continue;
+      }
+      const z = {id: `zm-flow-${i}`, start: +Math.max(before0, b.t - 0.8, ...doc.zooms.filter(z => z.start < b.t).map(z => z.end + GLIDE)).toFixed(2), end: +Math.min(after, b.end + 0.9).toFixed(2), amount, mode: 'manual', focus: {x: +(((need.x + need.w / 2) / W) * 100).toFixed(2), y: +(((need.y + need.h / 2) / H) * 100).toFixed(2)}};
+      doc.zooms.push(z);
+      doc.zooms.sort((a, c) => a.start - c.start);
+      lines.push(`- ${z.start.toFixed(1)}–${z.end.toFixed(1)} s: added a ${amount}× zoom on ${b.label}, as the flow asked`);
+    }
+  };
+  // Repeat until nothing changes: removing a zoom that can't fit can leave a wanted zoom to add.
+  for (let round = 0; round < 8; round++) {
+    addWanted();
     const bad = new Set(check(doc).flatMap(r => (r.problems.length ? r.zooms : [])));
     if (!bad.size) break;
     for (const z of bad) {
@@ -234,7 +267,7 @@ if (fix && failing.length) {
       const need = union(covered);
       const before = `${z.amount}× ${z.mode}`;
       const cap = need ? Math.floor(capFor(need) * 10) / 10 : z.amount;
-      if (cap < MIN_ZOOM || round === 5) {
+      if (cap < MIN_ZOOM || round >= 6) {
         doc.zooms = doc.zooms.filter(x => x !== z);
         lines.push(`- ${z.start.toFixed(1)}–${z.end.toFixed(1)} s: ${before} → removed${need ? ` (what it covers spans ${need.w}×${need.h}, too much to zoom)` : ''}`);
         continue;
@@ -245,7 +278,9 @@ if (fix && failing.length) {
       lines.push(`- ${z.start.toFixed(1)}–${z.end.toFixed(1)} s: ${before} → ${z.amount}× manual, centred on the ${need.w}×${need.h} area its beats need`);
     }
   }
-  const left = check(doc).filter(r => r.problems.length).length;
+  const mf = motionOf(doc);
+  if (mf.zoom.v > MAX_ZOOM_SPEED) lines.push(`- the camera still zooms too sharply at ${mf.zoom.s.toFixed(1)} s (${mf.zoom.v.toFixed(1)} doublings/s): space those zooms out in the flow`);
+  const left = check(doc).filter(r => r.problems.length).length + (mf.zoom.v > MAX_ZOOM_SPEED ? 1 : 0);
   project.edited = new Date().toISOString();
   writeFileSync(projectFile, JSON.stringify(project));
   lines.push('', left ? `${left} beats still fail on paper; change the flow (pacing, \`show\`).` : 'All beats pass on paper. Render again (render.mjs), then review again to check the frames.');

@@ -6,13 +6,22 @@
 //
 // Writes <out>/library: a Recordly recordings folder holding the recording and a project for it.
 // Render it with walkthrough/render.mjs.
+//
+// Two kinds of flow. A page flow exports `url` (and optionally `setup(page)`): the app runs in a
+// browser and only its page is captured; `run(d, page)`. A desktop flow exports `desktop = true` and
+// `launch({display, env, desktop, out, width, height, recordly})`, which starts its apps on a
+// desktop (window manager and all), registers their pages with `desktop.register(page, origin)`
+// and returns what `run(d, ctx)` needs plus `close()`; the whole screen is captured and the
+// director uses real input.
 import {spawn, execFileSync} from 'node:child_process';
 import {mkdirSync, rmSync, writeFileSync} from 'node:fs';
 import {basename, join, resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {chromium} from 'playwright-core';
 import {Director} from './lib/director.mjs';
-import {startDisplay} from './lib/display.mjs';
+import {startDesktop, startDisplay} from './lib/display.mjs';
+import {recordlyDir, recordlyNative} from './lib/recordly.mjs';
+import {DesktopSurface, PageSurface} from './lib/surfaces.mjs';
 
 const arg = (name, fallback) => {
   const i = process.argv.indexOf(`--${name}`);
@@ -36,41 +45,66 @@ const folder = join(library, `Recording ${slug}`);
 rmSync(library, {recursive: true, force: true});
 mkdirSync(folder, {recursive: true});
 
-// room above the page for the browser's tab strip and address bar, which stay out of the shot
-const screen = await startDisplay({width, height: height + 300});
-console.log(`display ${screen.display} ${width}×${height}`);
+let target;
+if (flow.desktop) {
+  // A whole desktop: the flow launches its apps (flow.launch) and the director uses real input.
+  const desk = await startDesktop({width, height});
+  process.env.DISPLAY = desk.display; // for the native module's X connection
+  const recordly = recordlyDir(arg('recordly'));
+  const surface = new DesktopSurface({display: desk.display, native: recordlyNative(recordly)});
+  console.log(`desktop ${desk.display} ${width}×${height}`);
+  let ctx;
+  try {
+    ctx = await flow.launch({display: desk.display, env: desk.env, desktop: surface, out, width, height, recordly});
+  } catch (err) {
+    desk.stop();
+    throw err;
+  }
+  target = {surface, ctx, area: {x: 0, y: 0}, display: desk.display, close: async () => {
+    await ctx?.close?.();
+    desk.stop();
+  }};
+} else {
+  // room above the page for the browser's tab strip and address bar, which stay out of the shot
+  const screen = await startDisplay({width, height: height + 300});
+  console.log(`display ${screen.display} ${width}×${height}`);
 
-// The app in a browser window at the top-left; only its page area is captured, so page coordinates
-// are the recording's coordinates.
-const browser = await chromium.launch({
-  executablePath: chrome,
-  headless: false,
-  env: {...process.env, DISPLAY: screen.display},
-  args: ['--window-position=0,0', `--window-size=${width},${height + 200}`, '--force-device-scale-factor=1', '--no-first-run', '--disable-infobars', '--hide-crash-restore-bubble']
-});
-const context = await browser.newContext({viewport: null});
-const page = await context.newPage();
-// size the window so the page area is exactly width × height, and find where it is on screen
-const cdp = await context.newCDPSession(page);
-const {windowId} = await cdp.send('Browser.getWindowForTarget');
-const measure = () => page.evaluate(() => ({iw: innerWidth, ih: innerHeight, ow: outerWidth, oh: outerHeight, sx: screenX, sy: screenY}));
-let m = await measure();
-await cdp.send('Browser.setWindowBounds', {windowId, bounds: {left: 0, top: 0, width: width + m.ow - m.iw, height: height + m.oh - m.ih}});
-await page.waitForTimeout(500);
-m = await measure();
-if (m.iw !== width || m.ih !== height) throw new Error(`couldn't size the page to ${width}×${height} (it is ${m.iw}×${m.ih})`);
-const area = {x: m.sx + (m.ow - m.iw), y: m.sy + (m.oh - m.ih)};
-if (flow.setup) await flow.setup(page);
-await page.goto(flow.url, {waitUntil: 'networkidle'});
-await page.waitForTimeout(800);
+  // The app in a browser window at the top-left; only its page area is captured, so page
+  // coordinates are the recording's coordinates.
+  const browser = await chromium.launch({
+    executablePath: chrome,
+    headless: false,
+    env: {...process.env, DISPLAY: screen.display},
+    args: ['--window-position=0,0', `--window-size=${width},${height + 200}`, '--force-device-scale-factor=1', '--no-first-run', '--disable-infobars', '--hide-crash-restore-bubble']
+  });
+  const context = await browser.newContext({viewport: null});
+  const page = await context.newPage();
+  // size the window so the page area is exactly width × height, and find where it is on screen
+  const cdp = await context.newCDPSession(page);
+  const {windowId} = await cdp.send('Browser.getWindowForTarget');
+  const measure = () => page.evaluate(() => ({iw: innerWidth, ih: innerHeight, ow: outerWidth, oh: outerHeight, sx: screenX, sy: screenY}));
+  let m = await measure();
+  await cdp.send('Browser.setWindowBounds', {windowId, bounds: {left: 0, top: 0, width: width + m.ow - m.iw, height: height + m.oh - m.ih}});
+  await page.waitForTimeout(500);
+  m = await measure();
+  if (m.iw !== width || m.ih !== height) throw new Error(`couldn't size the page to ${width}×${height} (it is ${m.iw}×${m.ih})`);
+  if (flow.setup) await flow.setup(page);
+  await page.goto(flow.url, {waitUntil: 'networkidle'});
+  await page.waitForTimeout(800);
+  target = {surface: new PageSurface(page), ctx: page, area: {x: m.sx + (m.ow - m.iw), y: m.sy + (m.oh - m.ih)}, display: screen.display, close: async () => {
+    await browser.close();
+    screen.stop();
+  }};
+}
+const {area} = target;
 
-const d = new Director(page);
+const d = new Director(target.surface);
 await d.park(Math.round(width * 0.62), Math.round(height * 0.62));
 
 // Screen capture. x11grab stamps frames with wall-clock time; -copyts keeps it so the first
 // frame's time is exactly when the video starts, the anchor for the cursor log.
 const raw = join(out, 'raw.mkv');
-const ff = spawn('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-f', 'x11grab', '-draw_mouse', '0', '-framerate', String(fps), '-video_size', `${width}x${height}`, '-i', `${screen.display}+${area.x},${area.y}`, '-copyts', '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '10', '-pix_fmt', 'yuv444p', raw], {stdio: ['pipe', 'inherit', 'inherit']});
+const ff = spawn('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-f', 'x11grab', '-draw_mouse', '0', '-framerate', String(fps), '-video_size', `${width}x${height}`, '-i', `${target.display}+${area.x},${area.y}`, '-copyts', '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '10', '-pix_fmt', 'yuv444p', raw], {stdio: ['pipe', 'inherit', 'inherit']});
 const ffDone = new Promise(r => ff.on('exit', r));
 await new Promise(r => setTimeout(r, 1200)); // a beat of the starting screen
 
@@ -78,17 +112,20 @@ console.log(`recording "${recName}"…`);
 const started = Date.now();
 let failure = null;
 try {
-  await flow.run(d, page);
+  await flow.run(d, target.ctx);
 } catch (err) {
   failure = err;
+  // what the screen showed when it failed
+  try {
+    execFileSync('ffmpeg', ['-v', 'error', '-y', '-f', 'x11grab', '-video_size', `${width}x${height}`, '-i', `${target.display}+${area.x},${area.y}`, '-frames:v', '1', join(out, 'failure.png')]);
+  } catch {}
 }
 await new Promise(r => setTimeout(r, 1000));
 ff.stdin.write('q');
 await ffDone;
-await browser.close();
-screen.stop();
+await target.close();
 if (failure) {
-  console.error(`the flow failed after ${((Date.now() - started) / 1000).toFixed(1)} s: ${failure.message}`);
+  console.error(`the flow failed after ${((Date.now() - started) / 1000).toFixed(1)} s: ${failure.message}\nthe screen then: ${join(out, 'failure.png')}`);
   process.exit(1);
 }
 
