@@ -18,7 +18,7 @@ const meta = JSON.parse(readFileSync(join(out, 'walkthrough.json'), 'utf8'));
 const {beats} = JSON.parse(readFileSync(join(out, 'beats.json'), 'utf8'));
 
 // the poster moment: the flow's beat, settled (just before it ends); else the last beat's
-const main = beats.filter(b => !b.label.startsWith('hook · '));
+const main = beats;
 const beat = (meta.poster && main.find(b => b.label === meta.poster)) ?? main.at(-1);
 if (meta.poster && beat.label !== meta.poster) console.warn(`no beat "${meta.poster}"; using the last one`);
 const at = Math.max(0, beat.end - 0.3);

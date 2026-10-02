@@ -48,18 +48,17 @@ node walkthrough/review.mjs out/demo-taskly           # must pass; then look at 
 node walkthrough/finish.mjs out/demo-taskly           # poster frame (baked in as frame 0) and share copy
 ```
 
-## Shape: plan, hook, length
+## Shape: plan, length, tutorial order
 
-A flow can carry the brief for its video, from `latent-spaces/brag`'s playbook. Short beats long
-(15–25 s), and the first two seconds decide whether anyone keeps watching.
+A walkthrough goes from A to B in order, like walking someone through the flow: no opening on the
+payoff. A flow can carry the brief for its video, from `latent-spaces/brag`'s playbook.
 
-- **`plan`**: what it is, who it's for, the hook, the flow, the target `duration` ([min, max] s)
+- **`plan`**: what it is, who it's for, the flow, the target `duration` ([min, max] s)
   and `milestones` ({beat, by}: an action that must happen by then). `record.mjs` writes it to
   `plan.md`, and `review.mjs` fails the video if it runs too long or a milestone comes late.
-- **`hook`** (`{mark, seconds}`): the video opens on a few seconds from a moment the flow marked
-  with `d.mark(name)`, usually the payoff, then cuts to the start.
 - **`d.idle(fn)`** cuts what happens in `fn` (waits on the app, housekeeping the viewer needn't
-  see). **`d.fast(fn, {speed})`** plays it faster (a countdown, a progress bar). **`lead`** (ms)
+  see, a page load). The screen may change across the cut, so the review ends any zoom early
+  enough to have eased out before it, and starts the next one after it. **`d.fast(fn, {speed})`** plays it faster (a countdown, a progress bar). **`lead`** (ms)
   sets the pause before the first action.
 
 The recording is put together from an edit list (stretches of the capture, in order, at their
@@ -212,9 +211,19 @@ zoom. Hold after a click that changes the screen, so the viewer sees what happen
   creates a project in Taskly while it records, stops with Ctrl+Shift+2, lands in the editor
   (asking for zooms when Recordly hasn't suggested them), trims off the start, and plays it back.
   43.8 s at 60 fps, reviewed and fixed (all 16 actions in view); contact sheet
-  `videos/recordly-record-review.png`. It was recorded before the hook, plan and readability
+  `videos/recordly-record-review.png`. It was recorded before the plan and readability
   changes. Recordly's own recording inside it runs at about 9 fps at this density on a machine
   without a GPU, so its playback in the preview is choppy.
+- `videos/umami-setup.mp4`: setting up [Umami](https://github.com/umami-software/umami) for a
+  website, as a tutorial from start to finish: sign in, add the Taskly website (name and domain),
+  open its settings and copy the tracking code, open Taskly with that code in its page, and back in
+  Umami the visit is there (1 visitor). Umami is the real app (v3.4.0 from source, unmodified), and
+  the visit is real: Taskly (the bundled demo page) is served locally with exactly the code that
+  was copied (read off the clipboard) in its `<head>`, and Umami's own tracker counts it. Pasting
+  the code into the site's HTML happens off camera, in a cut. Taskly's icon in Umami is its logo
+  (Umami fetches icons from an online service this machine can't reach). 31.9 s, 1920×1200 (16:10)
+  at 60 fps, all checks passed. Poster, share copy, plan and contact sheet alongside
+  (`videos/umami-setup*`).
 - `videos/umami-traffic.mp4`: [Umami](https://github.com/umami-software/umami) finding out where a
   spike in traffic came from. It opens on the answer, then switches Taskly's dashboard to the last
   30 days, points at the one day that towers over the rest, scrolls to Sources and clicks

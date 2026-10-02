@@ -141,8 +141,7 @@ if (failure) {
 }
 
 // The edit: which stretches of the capture make the video, in order. Waits the flow marked as idle
-// (d.idle) are cut, and a flow's `hook` puts a few seconds from a marked moment first, so the video
-// opens on the payoff. Frames, cursor log and beats all go through the same edit, so they stay in
+// (d.idle) are cut; the video runs from the first action to the last, like a tutorial. Frames, cursor log and beats all go through the same edit, so they stay in
 // step; to Recordly it's one continuous recording.
 const startedAt = Math.round(Number(execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'stream=start_time', '-of', 'csv=p=0', raw]).toString().trim()) * 1000);
 // (with -copyts the container's "duration" is where it ends on the wall clock, not how long it is)
@@ -165,9 +164,6 @@ for (const [fa, fb, speed] of d.fasts) {
     segments.splice(i, 1, ...parts);
   }
 }
-const hookAt = flow.hook && d.marks[flow.hook.mark];
-if (flow.hook && !hookAt) console.warn(`the flow's hook mark "${flow.hook.mark}" was never set (d.mark); no hook`);
-if (hookAt) segments.unshift({a: hookAt, b: Math.min(rawEnd, hookAt + flow.hook.seconds * 1000), hook: true});
 let pos = 0;
 for (const sg of segments) {
   sg.speed ??= 1;
@@ -176,9 +172,9 @@ for (const sg of segments) {
 }
 /** Every time a capture moment plays in the video (wall-clock ms on the video's clock); none if cut. */
 const plays = t => segments.filter(sg => t >= sg.a && (t < sg.b || (t === sg.b && sg === segments.at(-1)))).map(sg => startedAt + sg.out + (t - sg.a) / sg.speed);
-/** Where a capture moment plays outside the hook (or where the cut it fell in ends). */
+/** Where a capture moment plays (or where the cut it fell in ends). */
 const playsMain = t => {
-  const main = segments.filter(sg => !sg.hook);
+  const main = segments;
   const sg = main.find(x => t >= x.a && t <= x.b) ?? main.find(x => x.a > t) ?? main.at(-1);
   return startedAt + sg.out + (Math.min(Math.max(t, sg.a), sg.b) - sg.a) / sg.speed;
 };
@@ -188,7 +184,6 @@ const inputs = segments.flatMap(sg => ['-ss', s0((sg.a - startedAt) / 1000), '-t
 const filter = segments.map((sg, i) => `[${i}:v]setpts=(PTS-STARTPTS)/${sg.speed}[v${i}]`).join(';') + `;${segments.map((_, i) => `[v${i}]`).join('')}concat=n=${segments.length}:v=1:a=0[v]`;
 execFileSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', ...inputs, '-filter_complex', filter, '-map', '[v]', '-r', String(fps), '-c:v', 'libx264', '-preset', 'medium', '-crf', '16', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', join(folder, 'screen.mp4')]);
 if (cuts.length) console.log(`cut ${cuts.length} span${cuts.length > 1 ? 's' : ''}: ${(cuts.reduce((s, [a, b]) => s + b - a, 0) / 1000).toFixed(1)} s`);
-if (hookAt) console.log(`opens on ${flow.hook.seconds} s from "${flow.hook.mark}"`);
 for (const [a, b, speed] of d.fasts) console.log(`${((b - a) / 1000).toFixed(1)} s played at ${speed}×`);
 const durationSec = Number(execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', join(folder, 'screen.mp4')]).toString().trim());
 rmSync(raw);
@@ -220,21 +215,16 @@ const now = new Date().toISOString();
 writeFileSync(join(library, 'Projects', `${recName}.recordly`), JSON.stringify({format: 'recordly-project', version: 1, id: `p-${slug}`, name: recName, created: now, edited: now, duration: durationSec, folders: [], recordingIds: [id]}));
 
 // The beats, in seconds of the video, for review.mjs. Actions inside a cut aren't in the video, so
-// they're left out; the hook's stretch gets its own copies of the beats it replays.
+// they're left out.
 const sec = t => +((t - startedAt) / 1000).toFixed(3);
 const inCut = t => cuts.some(([a, b]) => t > a && t < b);
 const beats = d.beats.filter(b => !inCut(b.t)).map(b => ({...b, t: sec(playsMain(b.t)), end: sec(playsMain(b.end ?? b.t))}));
-const hookSeg = segments.find(sg => sg.hook);
-if (hookSeg) {
-  // (a hook is a couple of seconds: no zoom requests in it, which would spend them zooming in and
-  // out; the payoff reads at a glance as it stands)
-  const hookBeats = d.beats.filter(b => (b.end ?? b.t) > hookSeg.a && b.t < hookSeg.b).map(({zoom, ...b}) => ({...b, label: `hook · ${b.label}`, t: sec(startedAt + hookSeg.out + Math.max(0, b.t - hookSeg.a)), end: sec(startedAt + hookSeg.out + Math.min(hookSeg.b, b.end ?? b.t) - hookSeg.a)}));
-  beats.unshift(...hookBeats);
-}
 // what the flow says about the finished video (its shape, plan, poster, share copy), for render.mjs,
 // review.mjs and finish.mjs
 writeFileSync(join(out, 'walkthrough.json'), JSON.stringify({name: recName, aspect: flow.aspect ?? 'native', width, height, scale, plan: flow.plan ?? null, poster: flow.poster ?? null, share: flow.share ?? null}, null, 2));
-writeFileSync(join(out, 'beats.json'), JSON.stringify({width, height, beats}, null, 2));
+// where the video jumps from one scene to another (an idle cut): no zoom should run across one
+const scenes = [...new Set(d.scenes.map(t => sec(playsMain(t))))].sort((a, b) => a - b);
+writeFileSync(join(out, 'beats.json'), JSON.stringify({width, height, beats, scenes}, null, 2));
 if (flow.plan) writeFileSync(join(out, 'plan.md'), planMarkdown(recName, flow.plan));
 const clicks = lines.filter(l => l.click === 'down').length;
 console.log(`recorded ${durationSec.toFixed(1)} s at ${pw}×${ph}, ${clicks} clicks → ${library}`);
@@ -242,6 +232,6 @@ console.log(`recorded ${durationSec.toFixed(1)} s at ${pw}×${ph}, ${clicks} cli
 /** The flow's plan, for people: what the video is for, its shape, and what the review holds it to. */
 function planMarkdown(title, p) {
   const list = xs => (xs ?? []).map(x => `- ${x}`).join('\n');
-  return [`# ${title}`, '', `**What it is:** ${p.what ?? ''}`, `**For:** ${p.audience ?? ''}`, `**Hook:** ${p.hook ?? ''}`, '', '## The flow', '', list(p.flow), '',
+  return [`# ${title}`, '', `**What it is:** ${p.what ?? ''}`, `**For:** ${p.audience ?? ''}`, '', '## The flow', '', list(p.flow), '',
     `## Checks`, '', `- Length: ${p.duration?.[0] ?? '?'}–${p.duration?.[1] ?? '?'} s`, ...(p.milestones ?? []).map(m => `- "${m.beat}" by ${m.by} s`), ''].join('\n');
 }

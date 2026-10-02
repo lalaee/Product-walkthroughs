@@ -1,0 +1,1 @@
+Setting up Umami for a website: add it, copy the one-line tracking code into your page, and the visits start showing up. No cookies, no banner.

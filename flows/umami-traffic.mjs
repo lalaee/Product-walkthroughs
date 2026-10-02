@@ -5,6 +5,7 @@
 // click on a referrer says it was Hacker News.
 //
 // Needs Umami running (UMAMI_URL, default http://localhost:3100; see the README).
+import {routeIcons} from './umami/icons.mjs';
 import {login, month, send} from './umami/traffic.mjs';
 
 export const name = 'Umami — where did that spike come from?';
@@ -16,23 +17,16 @@ export const lead = 500;
 export const plan = {
   what: 'Umami is privacy-first web analytics: traffic, sources and behaviour, without cookies.',
   audience: 'People who run a website and want to know what brings visitors in.',
-  hook: 'Open on the answer: the visitors from Hacker News, the spike in the chart.',
   flow: ["Taskly's dashboard in Umami", 'Last 30 days: one day stands out', 'Sources: click news.ycombinator.com', 'The dashboard filters to it: the spike was Hacker News'],
   duration: [12, 22],
   milestones: [{beat: 'Last 30 days', by: 6}, {beat: 'news.ycombinator.com', by: 14}]
 };
-export const hook = {mark: 'payoff', seconds: 2.5};
 export const poster = 'from Hacker News';
 // (the number is Umami's own, read off the dashboard at the end)
 export let share = n => `One day in the chart towers over the rest. In Umami that is two clicks: last 30 days, then the referrer. ${n} visitors from Hacker News.`;
 
 const BASE = process.env.UMAMI_URL ?? 'http://localhost:3100';
 export let url = `${BASE}/websites`;
-
-// Site icons: Umami asks an online service for them, which this machine can't reach. Taskly's own
-// gets its logo; every other site a plain grey tile with its initial (not that site's logo).
-const TASKLY_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5b5bf7"/><stop offset="1" stop-color="#9b5bf7"/></linearGradient></defs><rect width="32" height="32" rx="8" fill="url(#g)"/></svg>';
-const tile = letter => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="#e4e7ec"/><text x="16" y="21.5" font-family="Arial,sans-serif" font-size="16" font-weight="700" fill="#667085" text-anchor="middle">${letter}</text></svg>`;
 
 /** A fresh Taskly website with a month of traffic, signed in. */
 export async function setup(page) {
@@ -48,10 +42,7 @@ export async function setup(page) {
   if (failed) throw new Error(`${failed} visits weren't accepted`);
   url = `${BASE}/websites/${site.id}?date=24hour`;
 
-  await page.route('https://icons.duckduckgo.com/**', route => {
-    const domain = decodeURIComponent(new URL(route.request().url()).pathname.split('/').pop()).replace(/\.ico$/, '');
-    route.fulfill({contentType: 'image/svg+xml', body: domain.includes('taskly') ? TASKLY_ICON : tile(domain.replace(/^www\./, '')[0].toUpperCase())});
-  });
+  await routeIcons(page);
   await page.goto(`${BASE}/login`);
   await page.evaluate(t => localStorage.setItem('umami.auth', JSON.stringify(t)), token);
 }
@@ -90,6 +81,5 @@ export async function run(d, page) {
   // its visitors: the filter and the number, together
   const visitors = page.getByText('Visitors', {exact: true}).first();
   await d.point(visitors, {hold: 2200, show: [chip, visitors.locator('xpath=ancestor::*[2]')], label: 'from Hacker News', zoom: 1.8});
-  d.marks.payoff = d.beats.at(-1).t + 200;
   share = share((await visitors.locator('xpath=ancestor::*[2]').innerText()).split('\n')[1]);
 }

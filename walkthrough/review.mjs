@@ -34,7 +34,7 @@ const library = join(out, 'library');
 const recDir = join(library, readdirSync(library).find(f => f.startsWith('Recording ')));
 const projectFile = join(library, 'Projects', readdirSync(join(library, 'Projects')).find(f => f.endsWith('.recordly')));
 const video = join(out, `${basename(out)}.mp4`);
-const {width: W, height: H, beats} = JSON.parse(readFileSync(join(out, 'beats.json'), 'utf8'));
+const {width: W, height: H, beats, scenes = []} = JSON.parse(readFileSync(join(out, 'beats.json'), 'utf8'));
 const rec = JSON.parse(readFileSync(join(recDir, 'recording.json'), 'utf8'));
 const project = JSON.parse(readFileSync(projectFile, 'utf8'));
 if (!project.doc) throw new Error('the project has no saved edit yet: render it first (render.mjs)');
@@ -266,6 +266,10 @@ const m = motionOf(doc);
 const harsh = [];
 if (m.zoom.v > MAX_ZOOM_SPEED) harsh.push(`camera zooms too sharply at ${m.zoom.s.toFixed(1)} s (${m.zoom.v.toFixed(1)} doublings/s, at most ${MAX_ZOOM_SPEED}); try --motion smooth`);
 if (m.pan.v > MAX_PAN_SPEED) harsh.push(`camera pans too fast at ${m.pan.s.toFixed(1)} s (${m.pan.v.toFixed(1)} view widths/s, at most ${MAX_PAN_SPEED})`);
+// a zoom still on (or still easing out) when the video cuts to another scene carries the camera
+// move across the cut, onto a screen it wasn't framed for
+const acrossCut = z => scenes.find(c => z.start < c && z.end + RAMP > c);
+for (const z of doc.zooms) if (acrossCut(z) !== undefined) harsh.push(`a zoom (${z.start.toFixed(1)}–${z.end.toFixed(1)} s) runs across the cut at ${acrossCut(z).toFixed(1)} s`);
 const lines = [`# Review: ${project.name}`, '', `${results.length} beats, ${doc.zooms.length} zooms (${doc.motion?.preset} motion), ${failing.length} beats need attention.`, `Motion: peak zoom speed ${m.zoom.v.toFixed(1)} doublings/s at ${m.zoom.s.toFixed(1)} s, peak pan ${m.pan.v.toFixed(1)} view widths/s at ${m.pan.s.toFixed(1)} s.${harsh.map(h => `\n- ✗ ${h}`).join('')}`, ''];
 // The plan's checks (walkthrough.json, from the flow): the length, and when the milestones land
 const meta = JSON.parse(readFileSync(join(out, 'walkthrough.json'), 'utf8'));
@@ -304,7 +308,7 @@ if (fix) {
       const GLIDE = 1.0, APART = 1.6;
       const isHook = b.label.startsWith('hook · ');
       const gapAfter = z => (hookEnd && z.end <= hookEnd + 0.01 ? APART : GLIDE);
-      const after = Math.min(isHook ? hookEnd - 0.6 : Infinity, ...doc.zooms.filter(z => z.start >= (b.t + b.end) / 2).map(z => z.start - GLIDE), ...beats.filter(n => n.zoom && n.t > b.t).map(n => n.t - 0.2 - GLIDE));
+      const after = Math.min(isHook ? hookEnd - 0.6 : Infinity, ...doc.zooms.filter(z => z.start >= (b.t + b.end) / 2).map(z => z.start - GLIDE), ...beats.filter(n => n.zoom && n.t > b.t).map(n => n.t - 0.2 - GLIDE), ...scenes.filter(c => c > b.t).map(c => c - RAMP - 0.1));
       const before0 = before;
       for (const z of doc.zooms) if (z.end > b.t - 0.2 - GLIDE && z.start < b.t) z.end = Math.max(z.start + 0.6, Math.min(z.end, b.t - 0.2 - GLIDE));
       // and not before the action ahead of it has played out (what that one needs may not fit)
@@ -315,7 +319,7 @@ if (fix) {
         lines.push(`- ${b.t.toFixed(1)} s ${b.label}: wanted a ${b.zoom}× zoom, but what it needs (${need.w}×${need.h}) only fits at ${amount}×; left unzoomed`);
         continue;
       }
-      const z = {id: `zm-flow-${i}`, start: +Math.max(before0, b.t - 0.8, prevEnd, ...doc.zooms.filter(z => z.start < b.t).map(z => z.end + gapAfter(z))).toFixed(2), end: +Math.min(after, b.end + 0.9).toFixed(2), amount, mode: 'manual', focus: {x: +(((need.x + need.w / 2) / W) * 100).toFixed(2), y: +(((need.y + need.h / 2) / H) * 100).toFixed(2)}};
+      const z = {id: `zm-flow-${i}`, start: +Math.max(before0, b.t - 0.8, prevEnd, ...scenes.filter(c => c <= b.t).map(c => Math.ceil(c * 100) / 100), ...doc.zooms.filter(z => z.start < b.t).map(z => z.end + gapAfter(z))).toFixed(2), end: +Math.min(after, b.end + 0.9).toFixed(2), amount, mode: 'manual', focus: {x: +(((need.x + need.w / 2) / W) * 100).toFixed(2), y: +(((need.y + need.h / 2) / H) * 100).toFixed(2)}};
       doc.zooms.push(z);
       doc.zooms.sort((a, c) => a.start - c.start);
       lines.push(`- ${z.start.toFixed(1)}–${z.end.toFixed(1)} s: added a ${amount}× zoom on ${b.label}, as the flow asked`);
@@ -339,8 +343,24 @@ if (fix) {
     z.focus = {x: +(((need.x + need.w / 2) / W) * 100).toFixed(2), y: +(((need.y + need.h / 2) / H) * 100).toFixed(2)};
   }
   // Repeat until nothing changes: removing a zoom that can't fit can leave a wanted zoom to add.
+  // zooms end early enough to have eased out before a cut to another scene
+  const clampToScenes = () => {
+    for (const z of [...doc.zooms]) {
+      const c = acrossCut(z);
+      if (c === undefined) continue;
+      const end = +(c - RAMP - 0.1).toFixed(2);
+      if (end - z.start < 0.6) {
+        doc.zooms = doc.zooms.filter(x => x !== z);
+        lines.push(`- ${z.start.toFixed(1)}–${z.end.toFixed(1)} s: ${z.amount}× → removed, it ran across the cut at ${c.toFixed(1)} s`);
+      } else {
+        lines.push(`- ${z.start.toFixed(1)}–${z.end.toFixed(1)} s: ${z.amount}× → ends at ${end.toFixed(1)} s, eased out before the cut at ${c.toFixed(1)} s`);
+        z.end = end;
+      }
+    }
+  };
   for (let round = 0; round < 8; round++) {
     addWanted();
+    clampToScenes();
     const bad = new Set(check(doc).flatMap(r => (r.problems.length ? r.zooms : [])));
     if (!bad.size) break;
     for (const z of bad) {

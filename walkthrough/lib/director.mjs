@@ -33,6 +33,7 @@ export class Director {
     this.kindAt = 0;
     this.hover = null; // the target the pointer is heading to or resting on: its box, and whether it's clickable
     this.waits = []; // [start, end] wall-clock ms of waits to cut from the video
+    this.scenes = []; // wall-clock ms where an idle cut ends: the screen may have changed across it
     this.marks = {}; // named moments (wall-clock ms), e.g. where the hook is taken from
     this.fasts = []; // [start, end, speed] wall-clock ms of stretches to play faster
   }
@@ -230,7 +231,10 @@ export class Director {
       return await fn();
     } finally {
       const end = Date.now();
-      if (end - start > 2 * keep + 200) this.waits.push([start + keep, end - keep]);
+      if (end - start > 2 * keep + 200) {
+        this.waits.push([start + keep, end - keep]);
+        this.scenes.push(end - keep);
+      }
     }
   }
 }

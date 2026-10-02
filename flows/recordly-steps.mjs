@@ -56,6 +56,4 @@ export async function finishInEditor(d, {main}, trimAt) {
   await d.point(zoom, {hold: 2000, show: zoom, label: 'the suggested zoom', zoom: 2});
   const preview = main.locator('canvas[aria-label=Preview]');
   await d.click(main.getByRole('button', {name: 'Play', exact: true}), {hold: 2800, show: preview, label: 'Play', zoom: 1.6});
-  // the payoff: the recording playing back, zoomed where the clicks were (a flow's hook can open on it)
-  d.marks.payoff = d.beats.at(-1).t + 1000;
 }

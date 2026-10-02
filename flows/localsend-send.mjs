@@ -22,12 +22,10 @@ export const lead = 400;
 export const plan = {
   what: 'LocalSend sends files between your own devices on the same Wi-Fi, no cloud and no account.',
   audience: 'Anyone moving photos and files between their computer and phone.',
-  hook: 'Open on the payoff: the photo already on the phone.',
   flow: ['LocalSend is open on the PC, a phone nearby', 'Send → File: pick a photo', 'The phone shows up under Nearby devices: click it', 'The phone accepts; the photo arrives'],
   duration: [12, 22],
   milestones: [{beat: 'File', by: 7}, {beat: 'Pixel 8', by: 12}]
 };
-export const hook = {mark: 'payoff', seconds: 2.5};
 export const poster = 'the photo on the phone';
 export const share = 'LocalSend: pick a photo on your PC, tap your phone in the list, done. Straight over your Wi-Fi, no cloud, no account.';
 
@@ -125,5 +123,4 @@ export async function run(d, {localsend: ls, phone, home}) {
   // the phone is in the list: send it there. The phone shows the request, accepts, the photo arrives.
   await d.click(ls.text('Pixel 8'), {hold: 4200, show: [phone.locator('.phone'), ls.text('Finished')], label: 'Pixel 8'});
   await d.point(phone.locator('.screen'), {hold: 2200, show: phone.locator('#received'), label: 'the photo on the phone', zoom: 1.8});
-  d.marks.payoff = d.beats.at(-1).t + 300;
 }
