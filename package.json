@@ -1,0 +1,12 @@
+{
+  "name": "product-walkthroughs",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "record": "node walkthrough/record.mjs",
+    "render": "node walkthrough/render.mjs"
+  },
+  "dependencies": {
+    "playwright-core": "^1.56.1"
+  }
+}

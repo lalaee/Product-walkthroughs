@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Taskly</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; background: #f5f6f8; color: #1d2330; }
+  header { display: flex; align-items: center; gap: 12px; padding: 18px 40px; background: #fff; border-bottom: 1px solid #e4e7ec; }
+  header .logo { width: 30px; height: 30px; border-radius: 8px; background: linear-gradient(135deg, #5b5bf7, #9b5bf7); }
+  header h1 { font-size: 19px; margin: 0; }
+  main { max-width: 1100px; margin: 40px auto; padding: 0 40px; }
+  .bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+  .bar h2 { margin: 0; font-size: 26px; }
+  button { font: inherit; border: 0; border-radius: 10px; padding: 11px 20px; cursor: pointer; }
+  .primary { background: #5b5bf7; color: #fff; font-weight: 600; }
+  .ghost { background: #eef0f4; color: #1d2330; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .card { background: #fff; border: 1px solid #e4e7ec; border-radius: 14px; padding: 22px; min-height: 140px; cursor: pointer; transition: box-shadow .2s, transform .2s; }
+  .card:hover { box-shadow: 0 8px 24px rgba(20, 30, 60, .08); transform: translateY(-2px); }
+  .card h3 { margin: 0 0 6px; font-size: 18px; }
+  .card p { margin: 0; color: #667085; }
+  .card .meta { margin-top: 18px; font-size: 13px; color: #5b5bf7; font-weight: 600; }
+  .new { animation: pop .5s ease; }
+  @keyframes pop { from { opacity: 0; transform: scale(.94); } to { opacity: 1; transform: none; } }
+  .scrim { position: fixed; inset: 0; background: rgba(20, 25, 40, .35); display: none; align-items: center; justify-content: center; }
+  .scrim.open { display: flex; }
+  .dialog { background: #fff; border-radius: 16px; padding: 28px; width: 460px; box-shadow: 0 20px 60px rgba(0,0,0,.2); }
+  .dialog h3 { margin: 0 0 18px; font-size: 20px; }
+  label { display: block; font-weight: 600; font-size: 13px; margin: 14px 0 6px; }
+  input, textarea { width: 100%; font: inherit; padding: 10px 12px; border: 1px solid #d0d5dd; border-radius: 10px; }
+  input:focus, textarea:focus { outline: 2px solid #5b5bf7; border-color: transparent; }
+  .actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }
+  .tasks { background: #fff; border: 1px solid #e4e7ec; border-radius: 14px; padding: 8px 0; }
+  .task { display: flex; align-items: center; gap: 12px; padding: 12px 22px; border-bottom: 1px solid #f0f2f5; }
+  .task:last-child { border-bottom: 0; }
+  .task input { width: 18px; height: 18px; accent-color: #5b5bf7; }
+  .task.done span { text-decoration: line-through; color: #98a2b3; }
+  .add { display: flex; gap: 10px; margin-top: 18px; }
+  .back { margin-bottom: 18px; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<header><div class="logo"></div><h1>Taskly</h1></header>
+<main>
+  <section id="projects">
+    <div class="bar"><h2>Projects</h2><button class="primary" id="new-project">+ New project</button></div>
+    <div class="grid" id="grid">
+      <div class="card"><h3>Website refresh</h3><p>New landing page and pricing.</p><div class="meta">8 tasks</div></div>
+      <div class="card"><h3>Mobile app</h3><p>iOS beta for the spring launch.</p><div class="meta">12 tasks</div></div>
+    </div>
+  </section>
+  <section id="project" hidden>
+    <button class="ghost back" id="back">← Projects</button>
+    <div class="bar"><h2 id="project-title"></h2></div>
+    <div class="tasks" id="tasks"></div>
+    <div class="add"><input id="task-input" placeholder="Add a task…"><button class="primary" id="add-task">Add</button></div>
+  </section>
+</main>
+<div class="scrim" id="scrim">
+  <form class="dialog" id="form">
+    <h3>New project</h3>
+    <label for="name">Name</label><input id="name" autocomplete="off">
+    <label for="desc">Description</label><textarea id="desc" rows="3"></textarea>
+    <div class="actions"><button type="button" class="ghost" id="cancel">Cancel</button><button class="primary" id="create">Create project</button></div>
+  </form>
+</div>
+<script>
+  const $ = id => document.getElementById(id);
+  $('new-project').onclick = () => { $('scrim').classList.add('open'); };
+  $('cancel').onclick = () => $('scrim').classList.remove('open');
+  $('form').onsubmit = e => {
+    e.preventDefault();
+    const card = document.createElement('div');
+    card.className = 'card new';
+    card.innerHTML = '<h3></h3><p></p><div class="meta">0 tasks</div>';
+    card.querySelector('h3').textContent = $('name').value;
+    card.querySelector('p').textContent = $('desc').value;
+    card.onclick = () => open(card);
+    $('grid').prepend(card);
+    $('scrim').classList.remove('open');
+    $('form').reset();
+  };
+  function open(card) {
+    $('project-title').textContent = card.querySelector('h3').textContent;
+    $('projects').hidden = true;
+    $('project').hidden = false;
+  }
+  $('back').onclick = () => { $('project').hidden = true; $('projects').hidden = false; };
+  $('add-task').onclick = () => {
+    const v = $('task-input').value.trim();
+    if (!v) return;
+    const row = document.createElement('label');
+    row.className = 'task';
+    row.innerHTML = '<input type="checkbox"><span></span>';
+    row.querySelector('span').textContent = v;
+    row.querySelector('input').onchange = e => row.classList.toggle('done', e.target.checked);
+    $('tasks').append(row);
+    $('task-input').value = '';
+  };
+  $('task-input').onkeydown = e => { if (e.key === 'Enter') $('add-task').click(); };
+</script>
+</body>
+</html>
