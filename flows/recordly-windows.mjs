@@ -100,7 +100,7 @@ export async function run(d, ctx) {
   const {main, overlay} = ctx;
   // 1. the recorder: Recordly's window steps aside and its bar comes up
   const bar = overlay.locator('[aria-label="Recorder"]');
-  await d.click(main.getByRole('button', {name: 'New recording'}).last(), {hold: 1000, show: bar, label: 'New recording'});
+  await d.click(main.getByRole('button', {name: 'New recording'}).last(), {hold: 1400, show: bar, label: 'New recording'});
   // 2. what to record: the entire screen
   const picker = overlay.getByRole('dialog');
   await d.click(overlay.getByRole('button', {name: 'Choose what to record'}), {hold: 2900, show: picker, label: 'Choose what to record'});

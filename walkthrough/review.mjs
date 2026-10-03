@@ -414,8 +414,8 @@ if (fix) {
       else groups.push([c]);
     }
     // each group's framing first, then its times: the glide to the next group takes long enough
-    // for the camera not to pan faster than MAX_PAN_SPEED (an eased glide peaks near twice its
-    // average speed)
+    // for the camera not to pan faster than MAX_PAN_SPEED (Recordly's eased glide peaks at about
+    // 2.6 times its average speed)
     const framed = groups.map(g => {
       const need = union(g.map(x => x.need)), amount = amountFor(z, need);
       return {g, amount, focus: amount >= MIN_ZOOM ? middleOf(g.map(x => x.need), g.map(x => x.b.target), amount) : null};
@@ -423,7 +423,7 @@ if (fix) {
     const panFor = (a, b) => {
       if (!a?.focus || !b?.focus) return PAN;
       const w = W / Math.min(a.amount, b.amount), dist = Math.hypot(((a.focus.x - b.focus.x) / 100) * W, ((a.focus.y - b.focus.y) / 100) * H);
-      return Math.min(1.4, Math.max(PAN, (2 * dist) / (w * MAX_PAN_SPEED * 0.9)));
+      return Math.min(1.6, Math.max(PAN, (3 * dist) / (w * MAX_PAN_SPEED * 0.9)));
     };
     const made = [];
     framed.forEach(({g, amount, focus}, k) => {
@@ -469,9 +469,30 @@ if (fix) {
       }
     }
   };
+  // A zoom cut short to make room for one after it that's since gone: run it on again, so its last
+  // action can be read before the camera eases out (to a moment after that action, short of the
+  // next zoom, the next cut, and the next action's own arrival).
+  const extendHolds = () => {
+    const zs = [...doc.zooms].sort((a, b) => a.start - b.start);
+    zs.forEach((z, k) => {
+      const inZoom = beats.filter(b => b.t >= z.start && b.t < z.end);
+      if (!inZoom.length) return;
+      const last = inZoom.reduce((a, b) => (b.t > a.t ? b : a));
+      const nextBeat = beats.filter(b => b.t > last.t + 0.05).reduce((m, b) => Math.min(m, b.t), Infinity);
+      const next = zs[k + 1];
+      const bound = Math.min(next ? next.start - GLIDE_GAP : Infinity, ...scenes.filter(c => c > z.start).map(c => c - 0.1), nextBeat + 0.6, rec.durationSec - 0.1);
+      const want = Math.min(last.end + 0.9, bound);
+      if (want > z.end + 0.05) {
+        lines.push(`- ${z.start.toFixed(1)}–${z.end.toFixed(1)} s: runs on to ${want.toFixed(1)} s, so ${last.label} can be read before it eases out`);
+        z.end = +want.toFixed(2);
+      }
+    });
+  };
+  const GLIDE_GAP = 1.0;
   for (let round = 0; round < 8; round++) {
     addWanted();
     clampToScenes();
+    extendHolds();
     const checked = check(doc);
     const bad = new Set(checked.flatMap(r => (r.problems.length ? r.zooms : [])));
     if (!bad.size) break;
