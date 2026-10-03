@@ -129,8 +129,11 @@ export PLUGIN_DEV_URL="https://localhost:5173"
 export DESIGNTOAI_LICENSE="21B7ECD4-A8A3-4280-BF4F-E083B59C612D"   # read by the flow, never printed
 ```
 
-(If `flows/designtoai-plugin.mjs` isn't in your checkout yet, ask me to add it — I can draft it from
-the plugin's real DOM once you can confirm a couple of selectors from your machine.)
+The flow is a **best-effort draft**. The plugin-panel steps (license field, Activate, Copy prompt)
+and the terminal/Claude Code ending use selectors read from the real plugin source and should work
+as written. Two steps touch Framer's own obfuscated canvas UI and are marked **«CONFIRM LOCALLY»**
+in the file: selecting the Hero Container, and the Plugins → Development menu path. Open the project
+once (step 5 above), see how those read, and adjust those two locators. Everything else is wired up.
 
 ---
 
