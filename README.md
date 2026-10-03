@@ -84,6 +84,10 @@ click. `review.mjs` checks every action in the video:
 - **The check.** Around the moment of each action the target has to be in view, with up to 15%
   allowed to be clipped while the camera arrives. Over the second half of the action, the target
   and its result have to be fully in view.
+- **Centred.** While zoomed in, once the camera has settled, the target (as it's acted on) and then
+  its result have to sit within 12% of the view of its middle. That holds unless the camera can't
+  get closer: at the edge of the recording, or when the result fills the view, so moving to the
+  target would cut it off.
 - **Motion.** It fails if the camera zooms faster than 3 doublings per second or pans faster than 1.2
   view widths per second. The focused preset peaks around 12 doublings per second; smooth stays
   under 3.
@@ -94,9 +98,13 @@ click. `review.mjs` checks every action in the video:
 - **The flow.** It fails if a `show` target never appeared, or if a click, typing or key press
   changed nothing on screen. Either means the flow didn't do what it meant to.
 
-`--fix` reframes every zoom as a manual zoom centred on everything its actions need. Recordly's
-own zooms follow the cursor, which can leave the content off to one side. Each zoom goes no tighter
-than still shows all of it, and never past 2×. A zoom is removed if that would be under 1.3×. It
+`--fix` reframes every zoom as a manual zoom centred on what its actions need. Recordly's own zooms
+follow the cursor, which can leave the content off to one side. A zoom has one focus, so one that
+spans actions in different places (typing into a form, then the button on the page it leads to)
+leaves each of them off-centre. Those are split into one zoom per group of actions that share a
+middle, gliding from one to the next. Each zoom is centred between its result and its target, goes
+no tighter than still shows all of it, and never past 2×. If its target still can't be centred,
+it's widened. A zoom is removed if it would be under 1.3×, or if no framing works. It
 adds the zooms the flow asked for, and re-checks the camera after each change until every beat
 passes. Then it saves the project for a re-render.
 
