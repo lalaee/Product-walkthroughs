@@ -13,6 +13,31 @@ screen (Xvfb). Steps below note where they differ.
 
 ---
 
+## For your coding agent (hand this off)
+
+If you're driving this with Claude Code (or Cursor, Gemini, etc.) on your machine, clone this repo
+on its branch and point your agent at this file:
+
+```sh
+git clone -b claude/beautiful-ptolemy-d119oh https://github.com/lalaee/Product-walkthroughs
+```
+
+Then tell the agent:
+
+> Read `videos/designtoai-plugin/LOCAL-RUN.md` and `skills/product-walkthrough/SKILL.md`, then set up
+> and record the Design to AI walkthrough using `flows/designtoai-plugin.mjs`. Clone the two sibling
+> repos the guide lists (`Recorder-2` and `DesigntoAI-Plugin-Cloud`), install everything, start the
+> plugin dev server, and run record → render → review → frames. The two Framer-canvas selectors
+> marked «CONFIRM LOCALLY» in the flow need adjusting against the live editor before recording —
+> open the project (step 5) and fix them first.
+
+You still provide the secrets yourself, never in the repo: the Framer `cookies.txt` (step 4), the
+license key, and optionally your `ELEVENLABS_API_KEY` for narration. Your agent's environment needs
+Node 20+, Rust, ffmpeg, and (on Linux) Xvfb — step 1 lists them; let the agent install them if it
+asks.
+
+---
+
 ## 1. Install the system packages (once)
 
 **Linux (Debian/Ubuntu):**
