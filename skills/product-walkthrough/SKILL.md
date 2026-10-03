@@ -174,8 +174,9 @@ These came from people watching the results; keep them unless the user asks othe
 - **Smooth** zoom motion (Recordly's `smooth` preset), at most 2×, centred on the content.
 - **Bigger cursor**: Recordly's cursor at 2.5× (`render.mjs --cursor`, the default).
 - **No dead time**: cut waits and loading; the video should never sit still without a reason.
-- **Subtitles, not narration**: big instructional captions in Inter, in a band below the
-  recording; no voice.
+- **Subtitles first**: big instructional captions in Inter, in a band below the recording.
+  A voice (ElevenLabs) is an option for those who want one and have a key: see "Narration" in
+  `references/flow-authoring.md`. It gives a second, narrated copy of the video.
 - **Real-time playback**: if the video shows something playing (a video, an animation) and the
   machine can't draw it at full speed, film it in slow motion (`walkthrough/lib/slowmo.mjs`) so
   it plays at its real speed; say so in the report.

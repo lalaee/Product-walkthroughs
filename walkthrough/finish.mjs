@@ -1,4 +1,5 @@
-// Finishes a reviewed walkthrough for sharing: a poster frame and share copy.
+// Finishes a reviewed walkthrough for sharing: a poster frame, share copy, and (when the flow was
+// recorded with narration) a narrated copy, <flow>-narrated.mp4, next to the silent one.
 //
 //   node walkthrough/finish.mjs out/<flow>
 //
@@ -8,8 +9,9 @@
 // only way to choose what people see before they press play. Frame 0 is replaced, not added, so
 // the length stays the same. Share copy (the flow's `share`) goes to share-copy.txt.
 import {execFileSync} from 'node:child_process';
-import {readFileSync, renameSync, writeFileSync} from 'node:fs';
+import {existsSync, readFileSync, renameSync, writeFileSync} from 'node:fs';
 import {basename, join, resolve} from 'node:path';
+import {mixNarration} from './lib/voice.mjs';
 
 const out = resolve(process.argv[2] ?? '');
 const slug = basename(out);
@@ -35,3 +37,11 @@ if (meta.share) {
   writeFileSync(join(out, 'share-copy.txt'), meta.share.trim() + '\n');
   console.log(`share copy → ${join(out, 'share-copy.txt')}`);
 } else console.warn('the flow has no `share` copy');
+
+// the narrated copy: each line at the moment its step began
+if (existsSync(join(out, 'voice.json'))) {
+  const lines = JSON.parse(readFileSync(join(out, 'voice.json'), 'utf8'));
+  const narrated = join(out, `${slug}-narrated.mp4`);
+  const n = mixNarration(video, beats, lines, narrated);
+  console.log(`narrated: ${n} lines → ${narrated}`);
+}

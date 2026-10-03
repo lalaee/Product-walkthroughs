@@ -58,6 +58,17 @@ recording so they never cover the app (`walkthrough/lib/captions.mjs`). `review.
 `render.mjs` write them into the project. One line each, at most 48 characters; `record.mjs`
 refuses longer ones. Needs the Inter font installed (`fonts-inter`).
 
+## Voice narration (optional)
+
+For a spoken version, give steps a line to say: `d.click(button, {caption: 'Click Add website',
+narrate: 'Click Add website.'})`. With an [ElevenLabs](https://elevenlabs.io) API key in
+`ELEVENLABS_API_KEY` and a voice (the flow's `voice` export, `--voice` or `ELEVENLABS_VOICE`),
+`record.mjs` makes every line before recording (cached in `out/.voice`, so re-recording costs
+nothing for lines already made) and paces the flow to them: a narrated step waits for the line
+before it to finish, so lines never overlap and each starts with its step. `finish.mjs` then writes
+`<flow>-narrated.mp4` next to the silent, captioned `<flow>.mp4`. Without a key the flow records
+as before, captions only. Keep the key out of the repo.
+
 ## Use it from a coding agent
 
 The whole process (picking the flow, making the app real, scripting it, reviewing it frame by

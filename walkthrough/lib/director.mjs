@@ -36,6 +36,37 @@ export class Director {
     this.scenes = []; // wall-clock ms where an idle cut ends: the screen may have changed across it
     this.marks = {}; // named moments (wall-clock ms), e.g. where the hook is taken from
     this.fasts = []; // [start, end, speed] wall-clock ms of stretches to play faster
+    this.voices = null; // narration: {text: seconds}, set by record.mjs when the flow is narrated (else lines are ignored)
+    this.voiceUntil = 0; // wall-clock ms when the line being spoken ends (moved on by cuts and speed-ups)
+  }
+
+  /**
+   * Before a narrated step: wait for the line before it to finish, so lines never overlap and each
+   * starts with its step; then note when this one starts and how long it lasts.
+   */
+  async #voiceFirst(text) {
+    if (!text || !this.voices) return;
+    if (!(text in this.voices)) throw new Error(`no audio for the line "${text}" (record with ELEVENLABS_API_KEY set)`);
+    const wait = this.voiceUntil - Date.now();
+    if (wait > 0) await sleep(wait);
+  }
+  /** The line starts now (it's placed here in the video), and lasts its length plus a breath. */
+  #voiceNoted(text) {
+    if (!text || !this.voices) return;
+    const beat = this.beats.at(-1);
+    beat.narrate = text;
+    beat.voiceWall = Date.now();
+    this.voiceUntil = beat.voiceWall + this.voices[text] * 1000 + 250;
+  }
+  /** The end of the last line: record.mjs waits for it before stopping the capture. */
+  async voiceDone() {
+    const wait = this.voiceUntil - Date.now();
+    if (wait > 0) await sleep(wait + 300);
+  }
+  /** A stretch cut from the video (or played faster) shortens what's left of the line in video time. */
+  #cut(a, b) {
+    this.waits.push([a, b]);
+    if (this.voiceUntil > a) this.voiceUntil += b - a;
   }
 
   #write(entry) {
@@ -71,7 +102,7 @@ export class Director {
       return await fn();
     } finally {
       const end = Date.now();
-      if (end - start > 250) this.waits.push([start + 40, end - 40]);
+      if (end - start > 250) this.#cut(start + 40, end - 40);
     }
   }
 
@@ -146,9 +177,11 @@ export class Director {
 
   /** Moves to the target and clicks it, then holds for `hold` ms so the viewer sees the result. */
   /** `after`: what happens during the hold instead of waiting it out (it ends the beat when it's done). */
-  async click(target, {hold = 700, show, label, zoom, after, caption} = {}) {
+  async click(target, {hold = 700, show, label, zoom, after, caption, narrate} = {}) {
+    await this.#voiceFirst(narrate);
     const done = await this.#beat('click', label, target, null, show, zoom);
     if (caption) this.beats.at(-1).caption = caption;
+    this.#voiceNoted(narrate);
     const p = await this.moveTo(target);
     await sleep(140);
     this.beats.at(-1).t ??= Date.now();
@@ -166,8 +199,8 @@ export class Director {
   }
 
   /** Clicks a field and types into it at a readable pace. */
-  async type(target, text, {delay = 55, hold = 500, show, label, zoom, caption} = {}) {
-    await this.click(target, {hold: 250, label: label ?? `type "${text}"`, zoom, caption});
+  async type(target, text, {delay = 55, hold = 500, show, label, zoom, caption, narrate} = {}) {
+    await this.click(target, {hold: 250, label: label ?? `type "${text}"`, zoom, caption, narrate});
     const beat = this.beats.at(-1);
     beat.action = 'type';
     await this.s.type(text, delay);
@@ -178,9 +211,11 @@ export class Director {
   }
 
   /** Presses a key or a shortcut (Playwright names: Enter, Escape, Space, Control+Shift+2…). */
-  async press(key, {hold = 600, show, label, zoom, caption} = {}) {
+  async press(key, {hold = 600, show, label, zoom, caption, narrate} = {}) {
+    await this.#voiceFirst(narrate);
     const done = await this.#beat('press', label ?? `press ${key}`, null, Date.now(), show, zoom);
     if (caption) this.beats.at(-1).caption = caption;
+    this.#voiceNoted(narrate);
     // a shortcut (with Ctrl, Alt or Meta) goes in the log too: Recordly shows it as keycaps
     const parts = key.split('+'), mods = parts.slice(0, -1).map(m => ({Control: 'ctrl', Ctrl: 'ctrl', Shift: 'shift', Alt: 'alt', Meta: 'cmd'})[m] ?? m.toLowerCase());
     if (mods.some(m => m !== 'shift')) this.#write({key: parts.at(-1).toUpperCase(), mods});
@@ -190,19 +225,23 @@ export class Director {
   }
 
   /** Scrolls the page smoothly until the target is in the middle of the view. */
-  async scroll(target, {hold = 700, show, label, caption} = {}) {
+  async scroll(target, {hold = 700, show, label, caption, narrate} = {}) {
+    await this.#voiceFirst(narrate);
     const done = await this.#beat('scroll', label ?? `scroll to ${target}`, null, Date.now(), show ?? target);
     if (caption) this.beats.at(-1).caption = caption;
+    this.#voiceNoted(narrate);
     await this.s.scrollTo(target);
     await sleep(hold);
     await done();
   }
 
   /** Hovers over something long enough to count as a settle (a soft zoom). */
-  async point(target, {hold = 1200, show, label, zoom, caption} = {}) {
+  async point(target, {hold = 1200, show, label, zoom, caption, narrate} = {}) {
+    await this.#voiceFirst(narrate);
     await this.moveTo(target);
     const done = await this.#beat('point', label, target, Date.now(), show, zoom);
     if (caption) this.beats.at(-1).caption = caption;
+    this.#voiceNoted(narrate);
     await sleep(hold);
     await done();
   }
@@ -217,7 +256,10 @@ export class Director {
     try {
       return await fn();
     } finally {
-      this.fasts.push([start, Date.now(), speed]);
+      const end = Date.now();
+      this.fasts.push([start, end, speed]);
+      // played `speed` times faster, the stretch takes less of the line's time
+      if (this.voiceUntil > start) this.voiceUntil += (end - start) * (1 - 1 / speed);
     }
   }
 
@@ -238,7 +280,7 @@ export class Director {
     } finally {
       const end = Date.now();
       if (end - start > 2 * keep + 200) {
-        this.waits.push([start + keep, end - keep]);
+        this.#cut(start + keep, end - keep);
         this.scenes.push(end - keep);
       }
     }

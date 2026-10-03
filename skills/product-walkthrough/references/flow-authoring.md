@@ -99,6 +99,19 @@ Bold, about 4.7% of the frame height) in a band of background below the recordin
 cover the app; `review.mjs --fix` and `render.mjs` write them into the project
 (`walkthrough/lib/captions.mjs`). Check in the frames that every caption matches what's on screen.
 
+## Narration (optional)
+
+Captions are the default. When the user wants a voice and has an ElevenLabs key, also give the
+steps a `narrate: '…'` line: fuller than the caption, still short ("Give it a name, and the domain
+your site lives on."), one per step that starts something new. Spoken at about 2 words a second,
+lines set the pace: the director holds a narrated step until the line before it is finished.
+Write lines that say what the viewer is seeing as it happens; a sentence may run across a cut
+("Now, when someone visits your site," / "Umami counts the visit."). Run `record.mjs` with
+`ELEVENLABS_API_KEY` set (the voice: the flow's `voice`, `--voice` or `ELEVENLABS_VOICE`);
+`finish.mjs` writes `<flow>-narrated.mp4`. Ask the user for their key and voice; never commit the
+key. Listen to the narrated video once: a line that lands on the wrong step means its `narrate`
+belongs on another step.
+
 ## Patterns
 
 **Sign-in, then the real work.** Show signing in when the flow is setting up; otherwise sign in

@@ -26,6 +26,7 @@ import {pathToFileURL} from 'node:url';
 import {chromium} from 'playwright-core';
 import {CAPTION_CHARS} from './lib/captions.mjs';
 import {Director} from './lib/director.mjs';
+import {narrationLines, voiceFlow} from './lib/voice.mjs';
 import {startDesktop, startDisplay} from './lib/display.mjs';
 import {recordlyDir, recordlyNative} from './lib/recordly.mjs';
 import {DesktopSurface, PageSurface} from './lib/surfaces.mjs';
@@ -40,8 +41,9 @@ if (!flowPath || flowPath.startsWith('--')) {
   process.exit(2);
 }
 const flow = await import(pathToFileURL(resolve(flowPath)).href);
+const flowSource = readFileSync(resolve(flowPath), 'utf8');
 // captions are one line: check them before recording, not after
-for (const m of readFileSync(resolve(flowPath), 'utf8').matchAll(/caption:\s*(['"`])(.*?)\1/g)) {
+for (const m of flowSource.matchAll(/caption:\s*(['"`])(.*?)\1/g)) {
   if (m[2].length > CAPTION_CHARS) {
     console.error(`caption too long for one line (${m[2].length} characters, at most ${CAPTION_CHARS}): "${m[2]}"`);
     process.exit(2);
@@ -127,6 +129,18 @@ if (flow.desktop) {
 const {area} = target;
 
 const d = new Director(target.surface);
+// Narration (optional): the lines the flow speaks, made with ElevenLabs before recording (cached
+// across runs in out/.voice), so the director paces the steps to them. Without a key the flow is
+// recorded as it is, captions only.
+let voiceLines = null;
+if (narrationLines(flowSource).length) {
+  const voice = arg('voice', process.env.ELEVENLABS_VOICE ?? flow.voice);
+  if (process.env.ELEVENLABS_API_KEY && voice) {
+    voiceLines = voiceFlow(flowSource, {voice, dir: join(dirname(out), '.voice')});
+    d.voices = Object.fromEntries(Object.entries(voiceLines).map(([t, l]) => [t, l.duration]));
+    console.log(`narrated: ${Object.keys(voiceLines).length} lines, ${Object.values(voiceLines).reduce((a, l) => a + l.duration, 0).toFixed(1)} s of voice`);
+  } else console.log('not narrated (set ELEVENLABS_API_KEY and a voice to narrate it): captions only');
+}
 await d.park(Math.round(width * 0.62), Math.round(height * 0.62));
 
 // Screen capture. x11grab stamps frames with wall-clock time; -copyts keeps it so the first
@@ -141,6 +155,7 @@ const started = Date.now();
 let failure = null;
 try {
   await flow.run(d, target.ctx);
+  await d.voiceDone(); // the last line finishes before the capture stops
 } catch (err) {
   failure = err;
   // what the screen showed when it failed
@@ -237,7 +252,9 @@ writeFileSync(join(library, 'Projects', `${recName}.recordly`), JSON.stringify({
 // they're left out.
 const sec = t => +((t - startedAt) / 1000).toFixed(3);
 const inCut = t => cuts.some(([a, b]) => t > a && t < b);
-const beats = d.beats.filter(b => !inCut(b.t)).map(b => ({...b, t: sec(playsMain(b.t)), end: sec(playsMain(b.end ?? b.t))}));
+const beats = d.beats.filter(b => !inCut(b.t)).map(({voiceWall, ...b}) => ({...b, t: sec(playsMain(b.t)), end: sec(playsMain(b.end ?? b.t)), ...(voiceWall ? {voiceAt: sec(playsMain(voiceWall))} : {})}));
+if (voiceLines) writeFileSync(join(out, 'voice.json'), JSON.stringify(voiceLines, null, 2));
+else rmSync(join(out, 'voice.json'), {force: true});
 // what the flow says about the finished video (its shape, plan, poster, share copy), for render.mjs,
 // review.mjs and finish.mjs
 writeFileSync(join(out, 'walkthrough.json'), JSON.stringify({name: recName, aspect: flow.aspect ?? 'native', width, height, scale, plan: flow.plan ?? null, poster: flow.poster ?? null, share: flow.share ?? null, quality: flow.quality ?? null}, null, 2));
