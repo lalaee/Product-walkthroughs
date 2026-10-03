@@ -264,11 +264,13 @@ zoom. Hold after a click that changes the screen, so the viewer sees what happen
   open its settings and copy the tracking code, open Taskly with that code in its page, and back in
   Umami the visit is there (1 visitor), zoomed on the row of numbers. Each step has an
   instructional caption below the recording ("Click Add website", "Copy it into the <head> of
-  your pages"). Umami is the real app (v3.4.0 from source, unmodified), and
+  your pages"). `videos/umami-setup-narrated.mp4` is the same video with voice narration
+  (ElevenLabs), the flow paced to the lines: 9 lines, none overlapping, each starting with its
+  step; voice at -16 LUFS. Umami is the real app (v3.4.0 from source, unmodified), and
   the visit is real: Taskly (the bundled demo page) is served locally with exactly the code that
   was copied (read off the clipboard) in its `<head>`, and Umami's own tracker counts it. Pasting
   the code into the site's HTML happens off camera, in a cut. Taskly's icon in Umami is its logo
-  (Umami fetches icons from an online service this machine can't reach). 34.7 s, 1920×1200 (16:10)
+  (Umami fetches icons from an online service this machine can't reach). 36.6 s, 1920×1200 (16:10)
   at 60 fps, all checks passed (centring included), every action checked at full size. Poster, share copy, plan and contact sheet alongside
   (`videos/umami-setup*`).
 - `videos/umami-traffic.mp4`: [Umami](https://github.com/umami-software/umami) finding out where a

@@ -52,7 +52,7 @@ export function mixNarration(video, beats, lines, dest) {
   if (!spoken.length) return 0;
   const inputs = spoken.flatMap(b => ['-i', lines[b.narrate].file]);
   const delays = spoken.map((b, i) => `[${i + 1}:a]adelay=${Math.round(b.voiceAt * 1000)}:all=1[a${i}]`).join(';');
-  const mix = `${delays};${spoken.map((_, i) => `[a${i}]`).join('')}amix=inputs=${spoken.length}:normalize=0:dropout_transition=0,apad[voice]`;
+  const mix = `${delays};${spoken.map((_, i) => `[a${i}]`).join('')}amix=inputs=${spoken.length}:normalize=0:dropout_transition=0,loudnorm=I=-16:TP=-1.5:LRA=11,apad[voice]`;
   execFileSync('ffmpeg', ['-v', 'error', '-y', '-i', video, ...inputs, '-filter_complex', mix, '-map', '0:v', '-map', '[voice]', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '160k', '-shortest', dest]);
   return spoken.length;
 }
