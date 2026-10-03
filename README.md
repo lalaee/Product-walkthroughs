@@ -266,6 +266,16 @@ zoom. Hold after a click that changes the screen, so the viewer sees what happen
   `videos/recordly-record-review.png`. It was recorded before the plan and readability
   changes. Recordly's own recording inside it runs at about 9 fps at this density on a machine
   without a GPU, so its playback in the preview is choppy.
+- `videos/rottoways-before-after.mp4`: [Rottoways](https://github.com/lalaee/Rottoways), the design
+  system pack for AI-built landing pages, as a visitor to its site sees it: the pitch, the demo's
+  Before toggle (the landing page as AI tools build it by default: purple gradients, everything
+  centred), After (the same page through the pack), your copy kept, how you use it (renovate or
+  start new), what's in the pack, and the price. The real site, built from its repo (`vite build`,
+  served with `vite preview`, `ROTTOWAYS_URL`), unmodified. Its PostHog analytics are blocked
+  during recording so the run isn't counted as visits, and the checkout isn't opened (it's a real
+  Polar checkout); the video ends on the price. Captions at the top; `-narrated.mp4` is the same
+  walkthrough with the voice, its captions the spoken lines. 41.2 s, 1920×1200 (16:10), all checks
+  passed. Poster, share copy, plan and contact sheet alongside (`videos/rottoways-before-after*`).
 - `videos/umami-setup.mp4`: setting up [Umami](https://github.com/umami-software/umami) for a
   website, as a tutorial from start to finish: sign in, add the Taskly website (name and domain),
   open its settings and copy the tracking code, open Taskly with that code in its page, and back in

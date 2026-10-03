@@ -66,6 +66,6 @@ export async function run(d, page) {
   const buy = cta.locator('xpath=following::button[1]');
   const terms = cta.locator('xpath=following::*[contains(text(), "14 days refund")][1]');
   // (the whole call to action: its line, the button and the terms, so nothing's cut at the edge)
-  await d.point(buy, {hold: 2600, show: [cta, buy, terms], label: 'the price', zoom: 1.3,
+  await d.point(buy, {hold: 2600, show: [cta, buy, terms], label: 'the price',
     caption: '$19 once, for unlimited projects', narrate: "It's nineteen dollars, once, for unlimited projects."});
 }
