@@ -15,4 +15,4 @@
 
 - Length: 20–40 s
 - "Add website" by 11 s
-- "copy the tracking code" by 27 s
+- "copy the tracking code" by 29 s
