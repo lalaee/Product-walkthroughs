@@ -16,6 +16,7 @@ import {existsSync, mkdtempSync, readFileSync, readdirSync, renameSync, statSync
 import {tmpdir} from 'node:os';
 import {basename, join, resolve} from 'node:path';
 import {startDisplay} from './lib/display.mjs';
+import {captionWalkthrough} from './lib/captions.mjs';
 import {launchRecordly, recordlyDir} from './lib/recordly.mjs';
 
 const arg = (name, fallback) => {
@@ -46,6 +47,15 @@ if (process.argv.includes('--fresh') && saved.doc) {
   writeFileSync(projectFile, JSON.stringify(saved));
 } else if (saved.doc && saved.doc.motion?.preset !== motion) {
   console.warn(`note: the project's zooms were made with the ${saved.doc.motion?.preset} preset; add --fresh to redo them as ${motion}`);
+}
+// the flow's captions, and the band below the recording they sit in (once Recordly has made the
+// project's document; a fresh project gets them from review.mjs --fix)
+if (saved.doc && existsSync(join(out, 'beats.json'))) {
+  const rec = JSON.parse(readFileSync(join(library, readdirSync(library).find(f => f.startsWith('Recording ')), 'recording.json'), 'utf8'));
+  if (captionWalkthrough(saved.doc, {beats: JSON.parse(readFileSync(join(out, 'beats.json'), 'utf8')).beats, meta, durationSec: rec.durationSec})) {
+    writeFileSync(projectFile, JSON.stringify(saved));
+    console.log(`${saved.doc.captions.length} captions`);
+  }
 }
 
 const downloads = mkdtempSync(join(tmpdir(), 'recordly-export-'));

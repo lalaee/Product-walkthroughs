@@ -97,6 +97,11 @@ The director `d` acts like a presenter: `d.click`, `d.type`, `d.press`, `d.point
 3. **`zoom`: only where detail matters** (a form field, a code snippet, the final number). Wide
    results (a full page, a whole table) read better unzoomed.
 
+Give each step that starts something new a short instructional **caption** (`caption: 'Click
+Add website'`, one line); it stays up until the next one. Write them before scripting the
+holds, as a list of scenes: if a caption needs more time to read than its step lasts, the hold
+is too short.
+
 Cut anything the viewer needn't wait through (`d.idle`): page loads, an export running, a file
 dialog. Speed up countdowns (`d.fast`). Do what a user would do: if a user would click Stop,
 click Stop, not a keyboard shortcut.
@@ -134,6 +139,7 @@ full size when in doubt) and check each step:
   edge? (A form pushed to the left with empty space on the right is a fail even if it's "in view".)
 - Is the screen in the right **state**: loaded, the right page, the dialog open, the value typed?
 - Is it **sharp**, and is the text readable at the zoom?
+- Does the **caption** say what's happening on screen right now?
 - Does the cursor look right: a hand over buttons and links, the I-beam in fields, big enough?
 - Anything that shouldn't be there: a recorder bar inside a recording, a dev banner, a crash
   dialog, someone's real data?
@@ -168,6 +174,8 @@ These came from people watching the results; keep them unless the user asks othe
 - **Smooth** zoom motion (Recordly's `smooth` preset), at most 2×, centred on the content.
 - **Bigger cursor**: Recordly's cursor at 2.5× (`render.mjs --cursor`, the default).
 - **No dead time**: cut waits and loading; the video should never sit still without a reason.
+- **Subtitles, not narration**: big instructional captions in Inter, in a band below the
+  recording; no voice.
 - **Real-time playback**: if the video shows something playing (a video, an animation) and the
   machine can't draw it at full speed, film it in slow motion (`walkthrough/lib/slowmo.mjs`) so
   it plays at its real speed; say so in the report.

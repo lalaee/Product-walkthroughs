@@ -9,7 +9,7 @@ is needed (it's slower without one; see "Speed" below).
 ```sh
 # Debian/Ubuntu
 sudo apt-get install -y xvfb ffmpeg xdotool openbox xcompmgr feh tesseract-ocr \
-  libayatana-appindicator3-1 libegl1 libgl1 fonts-noto fonts-noto-color-emoji
+  libayatana-appindicator3-1 libegl1 libgl1 fonts-noto fonts-noto-color-emoji fonts-inter
 ```
 
 - `xvfb`, `ffmpeg`: the screen and the capture. Always needed.

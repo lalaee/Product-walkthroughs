@@ -20,10 +20,11 @@
 // and returns what `run(d, ctx)` needs plus `close()`; the whole screen is captured and the
 // director uses real input.
 import {spawn, execFileSync} from 'node:child_process';
-import {mkdirSync, rmSync, writeFileSync} from 'node:fs';
+import {mkdirSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
 import {basename, dirname, join, resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {chromium} from 'playwright-core';
+import {CAPTION_CHARS} from './lib/captions.mjs';
 import {Director} from './lib/director.mjs';
 import {startDesktop, startDisplay} from './lib/display.mjs';
 import {recordlyDir, recordlyNative} from './lib/recordly.mjs';
@@ -39,6 +40,13 @@ if (!flowPath || flowPath.startsWith('--')) {
   process.exit(2);
 }
 const flow = await import(pathToFileURL(resolve(flowPath)).href);
+// captions are one line: check them before recording, not after
+for (const m of readFileSync(resolve(flowPath), 'utf8').matchAll(/caption:\s*(['"`])(.*?)\1/g)) {
+  if (m[2].length > CAPTION_CHARS) {
+    console.error(`caption too long for one line (${m[2].length} characters, at most ${CAPTION_CHARS}): "${m[2]}"`);
+    process.exit(2);
+  }
+}
 const slug = basename(flowPath).replace(/\.m?js$/, '');
 const out = resolve(arg('out', join('out', slug)));
 // the screen size: --size, else the flow's own `size`, else 1920x1080

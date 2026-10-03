@@ -49,6 +49,15 @@ node walkthrough/frames.mjs out/demo-taskly           # one full-size frame per 
 node walkthrough/finish.mjs out/demo-taskly           # poster frame (baked in as frame 0) and share copy
 ```
 
+## Captions
+
+A step can carry an instructional subtitle: `d.click(button, {caption: 'Click Add website'})`. It
+comes up just before the step and stays until the next caption. Recordly draws them (its captions
+track) in Inter Bold, about 4.7% of the frame's height, in a band of background below the
+recording so they never cover the app (`walkthrough/lib/captions.mjs`). `review.mjs --fix` and
+`render.mjs` write them into the project. One line each, at most 48 characters; `record.mjs`
+refuses longer ones. Needs the Inter font installed (`fonts-inter`).
+
 ## Use it from a coding agent
 
 The whole process (picking the flow, making the app real, scripting it, reviewing it frame by
@@ -242,7 +251,9 @@ zoom. Hold after a click that changes the screen, so the viewer sees what happen
 - `videos/umami-setup.mp4`: setting up [Umami](https://github.com/umami-software/umami) for a
   website, as a tutorial from start to finish: sign in, add the Taskly website (name and domain),
   open its settings and copy the tracking code, open Taskly with that code in its page, and back in
-  Umami the visit is there (1 visitor), zoomed on the row of numbers. Umami is the real app (v3.4.0 from source, unmodified), and
+  Umami the visit is there (1 visitor), zoomed on the row of numbers. Each step has an
+  instructional caption below the recording ("Click Add website", "Copy it into the <head> of
+  your pages"). Umami is the real app (v3.4.0 from source, unmodified), and
   the visit is real: Taskly (the bundled demo page) is served locally with exactly the code that
   was copied (read off the clipboard) in its `<head>`, and Umami's own tracker counts it. Pasting
   the code into the site's HTML happens off camera, in a cut. Taskly's icon in Umami is its logo

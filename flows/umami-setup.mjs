@@ -58,26 +58,26 @@ export async function run(d, page) {
   // 1. sign in
   const user = page.locator('input[name=username]');
   await user.waitFor();
-  await d.type(user, 'admin', {label: 'Username'});
+  await d.type(user, 'admin', {label: 'Username', caption: 'Sign in to Umami'});
   await d.type(page.locator('input[name=password]'), 'umami', {label: 'Password'});
   await d.click(page.getByRole('button', {name: 'Login'}), {hold: 1200, show: page.getByRole('button', {name: 'Add website'}), label: 'Login'});
 
   // 2. add the website
-  await d.click(page.getByRole('button', {name: 'Add website'}), {hold: 1100, show: page.getByRole('dialog'), label: 'Add website'});
+  await d.click(page.getByRole('button', {name: 'Add website'}), {hold: 1100, show: page.getByRole('dialog'), label: 'Add website', caption: 'Click Add website'});
   const dialog = page.getByRole('dialog');
-  await d.type(dialog.locator('input[name=name]'), 'Taskly', {hold: 800, label: 'Name', zoom: 1.6, show: dialog});
+  await d.type(dialog.locator('input[name=name]'), 'Taskly', {hold: 800, label: 'Name', zoom: 1.6, show: dialog, caption: "Enter a name and your site's domain"});
   await d.type(dialog.locator('input[name=domain]'), 'taskly.app', {label: 'Domain', show: dialog});
-  await d.click(dialog.getByRole('button', {name: 'Save'}), {hold: 1200, show: page.getByRole('row', {name: /Taskly/}), label: 'Save'});
+  await d.click(dialog.getByRole('button', {name: 'Save'}), {hold: 1200, show: page.getByRole('row', {name: /Taskly/}), label: 'Save', caption: 'Save it: your website is now in the list'});
 
   // 3. its tracking code, in its settings
-  await d.click(page.getByRole('link', {name: 'Taskly'}).first(), {hold: 1000, show: page.getByRole('button', {name: 'Edit'}), label: 'Taskly'});
+  await d.click(page.getByRole('link', {name: 'Taskly'}).first(), {hold: 1000, show: page.getByRole('button', {name: 'Edit'}), label: 'Taskly', caption: 'Open the website, then click Edit'});
   await d.click(page.getByRole('button', {name: 'Edit'}).first(), {hold: 900, show: page.getByText('Tracking code', {exact: true}), label: 'Edit'});
   const tracking = page.getByText('Tracking code', {exact: true}).locator('xpath=..');
   await tracking.waitFor();
   const code = tracking.locator('textarea, pre, code').first();
-  await d.point(code, {hold: 3000, show: tracking, label: 'the tracking code', zoom: 1.6});
+  await d.point(code, {hold: 3000, show: tracking, label: 'the tracking code', zoom: 1.6, caption: 'This is your tracking code'});
   const copy = tracking.getByRole('button').last();
-  await d.click(copy, {hold: 1200, show: copy, label: 'copy the tracking code'});
+  await d.click(copy, {hold: 1200, show: copy, label: 'copy the tracking code', caption: 'Copy it into the <head> of your pages'});
   await page.takeSnippet();
   const overview = page.url().replace(/\/settings.*$/, '');
 
@@ -87,7 +87,7 @@ export async function run(d, page) {
     await page.locator('h2').first().waitFor();
     await d.wait(400);
   }, {keep: 0});
-  await d.point(page.locator('h2').first(), {hold: 2500, show: page.locator('main'), label: 'Taskly, with the code in its page'});
+  await d.point(page.locator('h2').first(), {hold: 2500, show: page.locator('main'), label: 'Taskly, with the code in its page', caption: 'Now someone visits your site…'});
 
   // 5. back in Umami: the visit
   await d.idle(async () => {
@@ -98,7 +98,7 @@ export async function run(d, page) {
   const visitors = page.getByText('Visitors', {exact: true}).first();
   // its first visit: the row of numbers, Visitors to Views
   const card = name => page.getByText(name, {exact: true}).first().locator('xpath=ancestor::*[2]');
-  await d.point(visitors, {hold: 2400, show: [card('Visitors'), card('Views')], label: 'the first visitor', zoom: 1.6});
+  await d.point(visitors, {hold: 2400, show: [card('Visitors'), card('Views')], label: 'the first visitor', zoom: 1.6, caption: '…and Umami counts the visit'});
 }
 
 /** Stops Taskly's site (record.mjs calls this whether or not the run worked). */

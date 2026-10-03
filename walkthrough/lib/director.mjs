@@ -146,8 +146,9 @@ export class Director {
 
   /** Moves to the target and clicks it, then holds for `hold` ms so the viewer sees the result. */
   /** `after`: what happens during the hold instead of waiting it out (it ends the beat when it's done). */
-  async click(target, {hold = 700, show, label, zoom, after} = {}) {
+  async click(target, {hold = 700, show, label, zoom, after, caption} = {}) {
     const done = await this.#beat('click', label, target, null, show, zoom);
+    if (caption) this.beats.at(-1).caption = caption;
     const p = await this.moveTo(target);
     await sleep(140);
     this.beats.at(-1).t ??= Date.now();
@@ -165,8 +166,8 @@ export class Director {
   }
 
   /** Clicks a field and types into it at a readable pace. */
-  async type(target, text, {delay = 55, hold = 500, show, label, zoom} = {}) {
-    await this.click(target, {hold: 250, label: label ?? `type "${text}"`, zoom});
+  async type(target, text, {delay = 55, hold = 500, show, label, zoom, caption} = {}) {
+    await this.click(target, {hold: 250, label: label ?? `type "${text}"`, zoom, caption});
     const beat = this.beats.at(-1);
     beat.action = 'type';
     await this.s.type(text, delay);
@@ -177,8 +178,9 @@ export class Director {
   }
 
   /** Presses a key or a shortcut (Playwright names: Enter, Escape, Space, Control+Shift+2…). */
-  async press(key, {hold = 600, show, label, zoom} = {}) {
+  async press(key, {hold = 600, show, label, zoom, caption} = {}) {
     const done = await this.#beat('press', label ?? `press ${key}`, null, Date.now(), show, zoom);
+    if (caption) this.beats.at(-1).caption = caption;
     // a shortcut (with Ctrl, Alt or Meta) goes in the log too: Recordly shows it as keycaps
     const parts = key.split('+'), mods = parts.slice(0, -1).map(m => ({Control: 'ctrl', Ctrl: 'ctrl', Shift: 'shift', Alt: 'alt', Meta: 'cmd'})[m] ?? m.toLowerCase());
     if (mods.some(m => m !== 'shift')) this.#write({key: parts.at(-1).toUpperCase(), mods});
@@ -188,17 +190,19 @@ export class Director {
   }
 
   /** Scrolls the page smoothly until the target is in the middle of the view. */
-  async scroll(target, {hold = 700, show, label} = {}) {
+  async scroll(target, {hold = 700, show, label, caption} = {}) {
     const done = await this.#beat('scroll', label ?? `scroll to ${target}`, null, Date.now(), show ?? target);
+    if (caption) this.beats.at(-1).caption = caption;
     await this.s.scrollTo(target);
     await sleep(hold);
     await done();
   }
 
   /** Hovers over something long enough to count as a settle (a soft zoom). */
-  async point(target, {hold = 1200, show, label, zoom} = {}) {
+  async point(target, {hold = 1200, show, label, zoom, caption} = {}) {
     await this.moveTo(target);
     const done = await this.#beat('point', label, target, Date.now(), show, zoom);
+    if (caption) this.beats.at(-1).caption = caption;
     await sleep(hold);
     await done();
   }

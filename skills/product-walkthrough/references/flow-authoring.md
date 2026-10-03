@@ -41,6 +41,9 @@ boxes. In desktop flows, also OCR'd text: `win.text('Send')` (see `desktop-apps.
 | `d.fast(fn, {speed})` | do `fn` and play that stretch `speed`× faster (countdowns, progress bars) |
 | `d.wait(ms)` | a plain wait (inside `idle`/`fast`, usually) |
 
+Every call also takes `caption: 'Click Add website'`: an instructional subtitle for that step
+(see "Captions" below).
+
 `label` names the step in the review and the frames; give every step a short, human one
 ("Add website", "the tracking code"). It's also how `plan.milestones` and `poster` refer to it.
 
@@ -79,6 +82,22 @@ following steps the same `show` (the form): the camera stays put through all of 
 review's fixer adds the zooms you asked for, centres every zoom on its
 step's result, splits a zoom whose steps need different places, and removes zooms that can't
 frame their steps.
+
+## Captions
+
+Walkthroughs carry big instructional subtitles, not narration. Give the steps that start
+something new a `caption` (one short instruction, at most 48 characters; `record.mjs` refuses
+longer ones), and leave the steps that continue it without one: a caption stays up until the
+next. Write them as what to do or what you're looking at, in the viewer's terms:
+
+- "Sign in to Umami", "Click Add website", "Enter a name and your site's domain"
+- "This is your tracking code", "Copy it into the <head> of your pages"
+- end on the result: "…and Umami counts the visit"
+
+Each comes up a moment (0.35 s) before its step. Recordly draws them (its captions track, Inter
+Bold, about 4.7% of the frame height) in a band of background below the recording, so they never
+cover the app; `review.mjs --fix` and `render.mjs` write them into the project
+(`walkthrough/lib/captions.mjs`). Check in the frames that every caption matches what's on screen.
 
 ## Patterns
 
