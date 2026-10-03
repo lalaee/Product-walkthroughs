@@ -13,6 +13,6 @@
 
 ## Checks
 
-- Length: 20–40 s
+- Length: 20–45 s
 - "Add website" by 11 s
 - "copy the tracking code" by 29 s
