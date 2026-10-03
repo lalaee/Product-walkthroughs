@@ -9,7 +9,7 @@
 // only way to choose what people see before they press play. Frame 0 is replaced, not added, so
 // the length stays the same. Share copy (the flow's `share`) goes to share-copy.txt.
 import {execFileSync} from 'node:child_process';
-import {existsSync, readFileSync, renameSync, writeFileSync} from 'node:fs';
+import {existsSync, readFileSync, renameSync, rmSync, writeFileSync} from 'node:fs';
 import {basename, join, resolve} from 'node:path';
 import {mixNarration} from './lib/voice.mjs';
 
@@ -38,10 +38,17 @@ if (meta.share) {
   console.log(`share copy → ${join(out, 'share-copy.txt')}`);
 } else console.warn('the flow has no `share` copy');
 
-// the narrated copy: each line at the moment its step began
+// the narrated version: its own render (render.mjs --narrated: captions are the spoken lines), the
+// poster as frame 0 there too, and the voice laid over it, each line at the moment it's spoken
 if (existsSync(join(out, 'voice.json'))) {
   const lines = JSON.parse(readFileSync(join(out, 'voice.json'), 'utf8'));
   const narrated = join(out, `${slug}-narrated.mp4`);
-  const n = mixNarration(video, beats, lines, narrated);
-  console.log(`narrated: ${n} lines → ${narrated}`);
+  if (!existsSync(narrated)) console.warn(`no narrated render: run render.mjs ${out} --narrated first`);
+  else {
+    const silent = join(out, `${slug}-narrated.silent.mp4`);
+    execFileSync('ffmpeg', ['-v', 'error', '-y', '-i', narrated, '-i', poster, '-filter_complex', "[0:v][1:v]overlay=0:0:enable='eq(n,0)'[v]", '-map', '[v]', '-an', '-c:v', 'libx264', '-crf', '16', '-preset', 'medium', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', silent]);
+    const n = mixNarration(silent, beats, lines, narrated);
+    rmSync(silent);
+    console.log(`narrated: ${n} lines → ${narrated}`);
+  }
 }

@@ -119,6 +119,9 @@ node walkthrough/review.mjs out/<flow> --fix       # reframes every zoom against
 node walkthrough/render.mjs out/<flow>             # export with the fixed zooms
 node walkthrough/review.mjs out/<flow>             # must pass
 node walkthrough/frames.mjs out/<flow>             # one full-size frame per step, to look at
+# narrated flows (ELEVENLABS_API_KEY set when recording):
+node walkthrough/render.mjs out/<flow> --narrated  # the narrated version, its captions the spoken lines
+python3 walkthrough/hear.py out/<flow>             # every line heard as written
 ```
 
 If `record.mjs` fails, read `failure.png` and the error before changing anything. Renders take

@@ -1,7 +1,7 @@
 // Turns a recording made by record.mjs into the finished video with Recordly: opens its project,
 // lets Recordly suggest zooms from the clicks and pauses, and exports an MP4 with its own exporter.
 //
-//   node walkthrough/render.mjs out/<flow> [--motion smooth|focused] [--fresh] [--aspect 1:1|16:9|…] [--quality original|high|standard]
+//   node walkthrough/render.mjs out/<flow> [--narrated] [--motion smooth|focused] [--fresh] [--aspect 1:1|16:9|…] [--quality original|high|standard]
 //                               [--fps 60|30] [--cursor 2.5] [--recordly ../recorder-2]
 //
 // Needs Recorder-2 cloned and built (npm ci && npm run build:native && npm run build).
@@ -38,6 +38,8 @@ const aspect = arg('aspect', meta.aspect ?? 'native');
 const quality = arg('quality', meta.quality ?? 'original');
 const fps = arg('fps', '60');
 const cursorSize = Number(arg('cursor', '2.5'));
+// --narrated: the narrated version, its captions the spoken lines (finish.mjs adds the voice)
+const narrated = process.argv.includes('--narrated');
 const projectFile = join(library, 'Projects', readdirSync(join(library, 'Projects')).find(f => f.endsWith('.recordly')));
 const saved = JSON.parse(readFileSync(projectFile, 'utf8'));
 // Recordly lists a project by its name (the file name is that name made safe: "?" becomes "-")
@@ -52,7 +54,7 @@ if (process.argv.includes('--fresh') && saved.doc) {
 // project's document; a fresh project gets them from review.mjs --fix)
 if (saved.doc && existsSync(join(out, 'beats.json'))) {
   const rec = JSON.parse(readFileSync(join(library, readdirSync(library).find(f => f.startsWith('Recording ')), 'recording.json'), 'utf8'));
-  if (captionWalkthrough(saved.doc, {beats: JSON.parse(readFileSync(join(out, 'beats.json'), 'utf8')).beats, meta, durationSec: rec.durationSec})) {
+  if (captionWalkthrough(saved.doc, {beats: JSON.parse(readFileSync(join(out, 'beats.json'), 'utf8')).beats, meta, durationSec: rec.durationSec, narrated})) {
     writeFileSync(projectFile, JSON.stringify(saved));
     console.log(`${saved.doc.captions.length} captions`);
   }
@@ -115,7 +117,7 @@ try {
   await dlg.getByText('Your video is ready').waitFor();
   const file = readdirSync(downloads).filter(f => f.endsWith('.mp4')).map(f => join(downloads, f)).sort((a, b) => statSync(b).mtimeMs - statSync(a).mtimeMs)[0];
   if (!file) throw new Error('Recordly said the export finished, but no MP4 was saved');
-  const dest = join(out, `${basename(out)}.mp4`);
+  const dest = join(out, `${basename(out)}${narrated ? '-narrated' : ''}.mp4`);
   renameSync(file, dest);
   console.log(`exported in ${((Date.now() - t0) / 1000).toFixed(0)} s → ${dest}`);
 } catch (err) {

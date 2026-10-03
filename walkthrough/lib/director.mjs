@@ -121,10 +121,29 @@ export class Director {
     const beat = {action, label: label ?? (typeof target === 'string' ? target : String(target)), t, target: target ? await this.#box(target) : null};
     if (zoom) beat.zoom = zoom === true ? 1.8 : zoom;
     this.beats.push(beat);
+    const watching = this.#watchShown(beat, show);
     return async () => {
       beat.end = Date.now();
+      await watching;
       if (show) await this.#shows(beat, show);
     };
+  }
+
+  /**
+   * When the step's result first shows (its first `show` target visible, from the moment it acts):
+   * a click that opens another page shows its result only once that page has loaded, and the
+   * camera shouldn't head for it before then (review.mjs).
+   */
+  async #watchShown(beat, show) {
+    const first = [show].flat()[0];
+    if (!first || typeof first.isVisible !== 'function') return;
+    while (beat.end == null) {
+      if (beat.t != null && (await first.isVisible().catch(() => false))) {
+        beat.shownAt = Math.max(beat.t, Date.now());
+        return;
+      }
+      await sleep(100);
+    }
   }
 
   /** How many words the viewer is meant to read in these targets (for the review's readability check). */

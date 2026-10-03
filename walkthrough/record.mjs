@@ -24,7 +24,7 @@ import {mkdirSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
 import {basename, dirname, join, resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {chromium} from 'playwright-core';
-import {CAPTION_CHARS} from './lib/captions.mjs';
+import {CAPTION_CHARS, NARRATION_CHARS} from './lib/captions.mjs';
 import {Director} from './lib/director.mjs';
 import {narrationLines, voiceFlow} from './lib/voice.mjs';
 import {startDesktop, startDisplay} from './lib/display.mjs';
@@ -42,6 +42,13 @@ if (!flowPath || flowPath.startsWith('--')) {
 }
 const flow = await import(pathToFileURL(resolve(flowPath)).href);
 const flowSource = readFileSync(resolve(flowPath), 'utf8');
+// spoken lines are the narrated version's captions: two lines at most
+for (const text of narrationLines(flowSource)) {
+  if (text.length > NARRATION_CHARS) {
+    console.error(`narration line too long for a two-line caption (${text.length} characters, at most ${NARRATION_CHARS}): "${text}"`);
+    process.exit(2);
+  }
+}
 // captions are one line: check them before recording, not after
 for (const m of flowSource.matchAll(/caption:\s*(['"`])(.*?)\1/g)) {
   if (m[2].length > CAPTION_CHARS) {
@@ -252,7 +259,7 @@ writeFileSync(join(library, 'Projects', `${recName}.recordly`), JSON.stringify({
 // they're left out.
 const sec = t => +((t - startedAt) / 1000).toFixed(3);
 const inCut = t => cuts.some(([a, b]) => t > a && t < b);
-const beats = d.beats.filter(b => !inCut(b.t)).map(({voiceWall, ...b}) => ({...b, t: sec(playsMain(b.t)), end: sec(playsMain(b.end ?? b.t)), ...(voiceWall ? {voiceAt: sec(playsMain(voiceWall))} : {})}));
+const beats = d.beats.filter(b => !inCut(b.t)).map(({voiceWall, shownAt, ...b}) => ({...b, t: sec(playsMain(b.t)), end: sec(playsMain(b.end ?? b.t)), ...(shownAt ? {shownAt: sec(playsMain(shownAt))} : {}), ...(voiceWall ? {voiceAt: sec(playsMain(voiceWall))} : {})}));
 if (voiceLines) writeFileSync(join(out, 'voice.json'), JSON.stringify(voiceLines, null, 2));
 else rmSync(join(out, 'voice.json'), {force: true});
 // what the flow says about the finished video (its shape, plan, poster, share copy), for render.mjs,

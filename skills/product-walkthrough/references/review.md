@@ -14,6 +14,9 @@ zooms in the saved project:
 - **Centred**: once the camera has settled, the result within 12% of the view's middle, and the
   target within 20% as it's clicked. Except where the camera can't get closer: at the edge of the
   recording, or when the result fills the view.
+- **Stays with the action**: until a step's result is on screen (the director notes when it
+  appears; a click that opens a page shows its result only after the load), the camera doesn't
+  head away from what's being acted on. The fixer starts a zoom on a result once it shows.
 - **Readable**: the view holds still long enough after the step (about 0.15 s per word, 0.8 to 2 s).
 - **Motion**: zoom speed at most 3.2 doublings per second; pan at most 1.2 view widths per second;
   no zoom running across a cut.

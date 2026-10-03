@@ -193,6 +193,17 @@ function check(d) {
       zoomsAt(f.s, d).forEach(x => zooms.add(x));
       problems.push(`off-centre at ${f.s.toFixed(1)} s: ${what} sits ${Math.round(Math.max(f.o.x, f.o.y) * 100)}% of the view from its middle (at most ${tol * 100}%)`);
     }
+    // Before its result is on screen (a click that opens another page), the camera stays with the
+    // thing acted on: heading for a result that isn't there yet drags the old page off-centre and
+    // then frames a blank or loading page.
+    if (b.target && b.shownAt > b.t + 0.4) {
+      const away = span(b.t, b.shownAt).map(s => ({s, v: viewAt(s, d)})).filter(({v}) => v.amount > 1.05)
+        .map(x => ({...x, o: offCentre(b.target, x.v)})).filter(x => !inside(b.target, x.v, 0.85) || Math.max(x.o.x, x.o.y) > OFF_CENTRE_TARGET);
+      if (away.length) {
+        zoomsAt(away[0].s, d).forEach(z => zooms.add(z));
+        problems.push(`the camera heads away from the ${b.action}'s target at ${away[0].s.toFixed(1)} s, before its result shows (${b.shownAt.toFixed(1)} s)`);
+      }
+    }
     const zoomed = b.zoom && d.zooms.some(z => z.start < b.end && z.end > (b.t + b.end) / 2);
     if (b.zoom && !zoomed) problems.push(`the flow wants a ${b.zoom}× zoom here, and there's none`);
     if (early.length) problems.push(`the ${b.action} target is out of view around the action (${early[0].s.toFixed(1)} s, ${early[0].v.amount}×)`);
@@ -367,7 +378,7 @@ if (fix) {
         lines.push(`- ${b.t.toFixed(1)} s ${b.label}: wanted a ${b.zoom}× zoom, but what it needs (${need.w}×${need.h}) only fits at ${amount}×; left unzoomed`);
         continue;
       }
-      const z = {id: `zm-flow-${i}`, start: +Math.max(before0, b.t - 0.8, prevEnd, ...scenes.filter(c => c <= b.t).map(c => Math.ceil(c * 100) / 100), ...doc.zooms.filter(z => z.start < b.t).map(z => z.end + gapAfter(z))).toFixed(2), end: +Math.min(after, b.end + 0.9).toFixed(2), amount, mode: 'manual', focus: middleOf([needs[i].result ?? need])};
+      const z = {id: `zm-flow-${i}`, start: +Math.max(before0, b.t - 0.8, prevEnd, resultShows(b), ...scenes.filter(c => c <= b.t).map(c => Math.ceil(c * 100) / 100), ...doc.zooms.filter(z => z.start < b.t).map(z => z.end + gapAfter(z))).toFixed(2), end: +Math.min(after, b.end + 0.9).toFixed(2), amount, mode: 'manual', focus: middleOf([needs[i].result ?? need])};
       doc.zooms.push(z);
       doc.zooms.sort((a, c) => a.start - c.start);
       lines.push(`- ${z.start.toFixed(1)}–${z.end.toFixed(1)} s: added a ${amount}× zoom on ${b.label}, as the flow asked`);
@@ -390,6 +401,8 @@ if (fix) {
     return members.every(m => ok(m.shows, null, OFF_CENTRE) && (!m.target || ok(m.target, m.need, OFF_CENTRE_TARGET)));
   };
   const PAN = 0.7; // the glide from one group to the next
+  // a zoom framed on a step's result starts once that result is on screen (it can take a page load)
+  const resultShows = b => (b.shownAt > b.t + 0.4 ? b.shownAt : -Infinity);
   /** The zooms z becomes: [z] reframed, or one per group of its beats; [] if none can zoom. */
   const frameZoom = z => {
     const covered = beats.map((b, i) => ({b, need: needs[i].need, shows: needs[i].result ?? needs[i].need})).filter(({b, need}) => need && b.end > z.start && b.t < z.end).sort((p, q) => p.b.t - q.b.t);
@@ -417,7 +430,7 @@ if (fix) {
     framed.forEach(({g, amount, focus}, k) => {
       if (!focus) return;
       const first = g[0].b, last = g.at(-1).b, next = groups[k + 1]?.[0].b;
-      const start = k === 0 ? z.start : Math.max(made.at(-1) ? made.at(-1).end + panFor(framed[k - 1], framed[k]) * 0.5 : z.start, first.t - 0.25);
+      const start = Math.max(resultShows(first), k === 0 ? z.start : Math.max(made.at(-1) ? made.at(-1).end + panFor(framed[k - 1], framed[k]) * 0.5 : z.start, first.t - 0.25));
       const end = !next ? z.end : Math.max(last.t + 0.4, Math.min(last.end, next.t - 0.25 - panFor(framed[k], framed[k + 1])));
       if (end - start < 0.6) return;
       made.push({...z, id: groups.length > 1 ? `${z.id}-${k}` : z.id, start: +start.toFixed(2), end: +end.toFixed(2), amount, mode: 'manual', focus});

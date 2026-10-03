@@ -58,6 +58,9 @@ centres on it, so:
   (`page.getByRole('row', {name: /Taskly/})`), the row of stat cards (`[card('Visitors'),
   card('Views')]`), the code panel. A word or a link inside it puts the content off-centre.
 - For a click that navigates, show the main thing on the new page, not a button in its corner.
+  A small `show` on the next page makes the camera zoom toward a corner while the old page is
+  still up (the review flags it: "the camera heads away from the click's target").
+  `[heading, mainButton]` across the page keeps it unzoomed.
 - A list of locators is fine; they're joined.
 - No `show` means "whatever changed on screen", which is too much when a dialog dims the page.
 
@@ -105,10 +108,15 @@ Captions are the default. When the user wants a voice and has an ElevenLabs key,
 steps a `narrate: '…'` line: fuller than the caption, still short ("Give it a name, and the domain
 your site lives on."), one per step that starts something new. Spoken at about 2 words a second,
 lines set the pace: the director holds a narrated step until the line before it is finished.
-Write lines that say what the viewer is seeing as it happens; a sentence may run across a cut
+Every line says what the viewer is seeing **as it happens**, from the very first frame: on a
+sign-in screen, "This is Umami. Sign in with your username," not a pitch for the product. Split a
+sentence across the steps it describes ("…with your username," / "and your password," / "then
+click Login."); a sentence may also run across a cut
 ("Now, when someone visits your site," / "Umami counts the visit."). Run `record.mjs` with
 `ELEVENLABS_API_KEY` set (the voice: the flow's `voice`, `--voice` or `ELEVENLABS_VOICE`);
-`finish.mjs` writes `<flow>-narrated.mp4`. Ask the user for their key and voice; never commit the
+render the narrated version with `render.mjs out/<flow> --narrated` (its captions are the spoken
+lines, up to two rows, each shown while it's spoken), and `finish.mjs` lays the voice over it as
+`<flow>-narrated.mp4`. Spoken lines are at most 96 characters. Ask the user for their key and voice; never commit the
 key.
 
 The lines are spoken as one continuous take and cut apart (`walkthrough/lib/voice.mjs`): made

@@ -65,8 +65,10 @@ narrate: 'Click Add website.'})`. With an [ElevenLabs](https://elevenlabs.io) AP
 `ELEVENLABS_API_KEY` and a voice (the flow's `voice` export, `--voice` or `ELEVENLABS_VOICE`),
 `record.mjs` makes every line before recording (cached in `out/.voice`, so re-recording costs
 nothing for lines already made) and paces the flow to them: a narrated step waits for the line
-before it to finish, so lines never overlap and each starts with its step. `finish.mjs` then writes
-`<flow>-narrated.mp4` next to the silent, captioned `<flow>.mp4`. Without a key the flow records
+before it to finish, so lines never overlap and each starts with its step. `render.mjs out/<flow> --narrated` renders the narrated version (its captions are the spoken
+lines, two rows at most, each shown while it's spoken), and `finish.mjs` lays the voice over it as
+`<flow>-narrated.mp4`, next to the silent, captioned `<flow>.mp4`. Lines say what's on screen as
+it happens, from the first frame. Without a key the flow records
 as before, captions only. Keep the key out of the repo.
 
 The lines are spoken as one continuous take and cut apart by ElevenLabs' character timings: made

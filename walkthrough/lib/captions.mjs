@@ -6,6 +6,7 @@
 // Captions are one line: keep them to an instruction (about 45 characters at most).
 
 export const CAPTION_CHARS = 48;
+export const NARRATION_CHARS = 96; // narrated captions show the spoken line: up to two lines
 
 // Sizes in Recordly's units: its layout is relative to a 1080-line frame (render/compositor.ts).
 const FONT_SIZE = 32; // caption fontSize: drawn at fontSize × 1.6 per 1080 lines (~51 px, ~4.7% of the height)
@@ -18,14 +19,19 @@ export const CAPTION_STYLE = {
   color: '#FFFFFF', rows: 1, maxWidth: 90, radius: 10, bgOpacity: 78, manualAdd: true
 };
 
-/** The captions for the beats that have one: [{id, start, end, text}] in seconds of the video. */
-export function captionsFor(beats, duration) {
-  const steps = beats.filter(b => b.caption).sort((a, b) => a.t - b.t);
+/**
+ * The captions: [{id, start, end, text}] in seconds of the video. By default the steps' own
+ * instructional captions, each from just before its step; `narrated`, the spoken lines, each from
+ * the moment it's spoken. Either stays until the next.
+ */
+export function captionsFor(beats, duration, {narrated = false} = {}) {
+  const steps = beats.filter(b => (narrated ? b.narrate && b.voiceAt != null : b.caption)).sort((a, b) => a.t - b.t);
   const out = [];
   steps.forEach((b, i) => {
-    const start = Math.max(0, out.length ? out.at(-1).start + 0.3 : 0, b.t - LEAD);
+    const at = narrated ? b.voiceAt : b.t - LEAD;
+    const start = Math.max(0, out.length ? out.at(-1).start + 0.3 : 0, at);
     if (out.length) out.at(-1).end = +(start - 0.02).toFixed(3);
-    out.push({id: `cap-${i}`, start: +start.toFixed(3), end: +(duration - 0.05).toFixed(3), text: b.caption});
+    out.push({id: `cap-${i}`, start: +start.toFixed(3), end: +(duration - 0.05).toFixed(3), text: narrated ? b.narrate : b.caption});
   });
   return out;
 }
@@ -35,13 +41,14 @@ export function captionsFor(beats, duration) {
  * the recording to show them in (the scene's top padding), sized for one line.
  * `aspect` is the output's width / height; `sourceAspect` the recording's.
  */
-export function applyCaptions(doc, beats, {duration, aspect, sourceAspect = aspect}) {
-  const captions = captionsFor(beats, duration);
+export function applyCaptions(doc, beats, {duration, aspect, sourceAspect = aspect, narrated = false}) {
+  const captions = captionsFor(beats, duration, {narrated});
   if (!captions.length) return false;
   doc.captions = captions;
-  doc.captionStyle = {...(doc.captionStyle ?? {}), ...CAPTION_STYLE};
-  // in 1080-line units: the caption box (one line), and the band that holds it
-  const k = 1.6, fs = FONT_SIZE * k, box = fs * 1.3 + 2 * 6 * k, band = box + 2 * MARGIN;
+  const rows = narrated ? 2 : 1;
+  doc.captionStyle = {...(doc.captionStyle ?? {}), ...CAPTION_STYLE, rows, maxWidth: narrated ? 82 : CAPTION_STYLE.maxWidth};
+  // in 1080-line units: the caption box (one line, or two for spoken lines), and the band that holds it
+  const k = 1.6, fs = FONT_SIZE * k, box = rows * fs * 1.3 + 2 * 6 * k, band = box + 2 * MARGIN;
   const H = 1080, W = H * aspect, unit = Math.min(W, H);
   const pad = doc.scene?.padding ?? 40;
   // padding is a % of a quarter of the shorter side (render/compositor.ts layout)
@@ -66,7 +73,7 @@ export const aspectOf = (aspect, sourceAspect) => {
 };
 
 /** Applies a walkthrough's captions (beats.json) to its Recordly project document. */
-export function captionWalkthrough(doc, {beats, meta, durationSec}) {
+export function captionWalkthrough(doc, {beats, meta, durationSec, narrated = false}) {
   const sourceAspect = meta.width / meta.height;
-  return applyCaptions(doc, beats, {duration: durationSec, aspect: aspectOf(meta.aspect, sourceAspect), sourceAspect});
+  return applyCaptions(doc, beats, {duration: durationSec, aspect: aspectOf(meta.aspect, sourceAspect), sourceAspect, narrated});
 }

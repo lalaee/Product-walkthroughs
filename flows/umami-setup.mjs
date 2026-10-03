@@ -60,16 +60,16 @@ export async function run(d, page) {
   // 1. sign in
   const user = page.locator('input[name=username]');
   await user.waitFor();
-  await d.type(user, 'admin', {label: 'Username', caption: 'Sign in to Umami', narrate: "Umami is simple, privacy-friendly web analytics. Let's set it up for a website. First, sign in."});
-  await d.type(page.locator('input[name=password]'), 'umami', {label: 'Password'});
-  await d.click(page.getByRole('button', {name: 'Login'}), {hold: 1800, show: page.getByRole('button', {name: 'Add website'}), label: 'Login'});
+  await d.type(user, 'admin', {label: 'Username', caption: 'Sign in to Umami', narrate: 'This is Umami. Sign in with your username,'});
+  await d.type(page.locator('input[name=password]'), 'umami', {label: 'Password', narrate: 'and your password,'});
+  await d.click(page.getByRole('button', {name: 'Login'}), {hold: 1800, show: [page.getByRole('heading', {name: 'Websites'}), page.getByRole('button', {name: 'Add website'})], label: 'Login', narrate: 'then click Login.'});
 
   // 2. add the website
   await d.click(page.getByRole('button', {name: 'Add website'}), {hold: 1100, show: page.getByRole('dialog'), label: 'Add website', caption: 'Click Add website', narrate: 'Click Add website.'});
   const dialog = page.getByRole('dialog');
   await d.type(dialog.locator('input[name=name]'), 'Taskly', {hold: 800, label: 'Name', zoom: 1.6, show: dialog, caption: "Enter a name and your site's domain", narrate: 'Give it a name, and the domain your site lives on.'});
   await d.type(dialog.locator('input[name=domain]'), 'taskly.app', {hold: 900, label: 'Domain', show: dialog});
-  await d.click(dialog.getByRole('button', {name: 'Save'}), {hold: 1200, show: page.getByRole('row', {name: /Taskly/}), label: 'Save', caption: 'Save it: your website is now in the list', narrate: "Save, and it's in your list."});
+  await d.click(dialog.getByRole('button', {name: 'Save'}), {hold: 1200, show: page.getByRole('row', {name: /Taskly/}), label: 'Save', caption: 'Save it: your website is now in the list', narrate: "Save it, and it's in your list."});
 
   // 3. its tracking code, in its settings
   await d.click(page.getByRole('link', {name: 'Taskly'}).first(), {hold: 1000, show: page.getByRole('button', {name: 'Edit'}), label: 'Taskly', caption: 'Open the website, then click Edit', narrate: 'Open the website, then click Edit.'});
