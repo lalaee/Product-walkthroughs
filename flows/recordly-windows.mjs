@@ -118,9 +118,9 @@ export async function run(d, ctx) {
   await finishInEditor(d, ctx, null, {slow: 4});
   // 5. export
   const dialog = main.getByRole('dialog');
-  await d.click(main.getByRole('button', {name: 'Export', exact: true}).first(), {hold: 1200, show: dialog, label: 'Export'});
-  await d.click(dialog.getByRole('button', {name: /^Export MP4$/}), {hold: 300, label: 'Export MP4'});
+  await d.click(main.getByRole('button', {name: 'Export', exact: true}).first(), {hold: 1700, show: dialog, label: 'Export'});
+  await d.click(dialog.getByRole('button', {name: /^Export MP4$/}), {hold: 300, show: dialog, label: 'Export MP4'});
   // (the export takes a while on this machine: a moment of its progress, then it's done)
   await d.idle(() => dialog.getByRole('button', {name: 'Save'}).waitFor({timeout: 10 * 60_000}), {keep: 800});
-  await d.click(dialog.getByRole('button', {name: 'Save'}), {hold: 2200, show: dialog, label: 'Save', zoom: 1.6});
+  await d.click(dialog.getByRole('button', {name: 'Save'}), {hold: 3000, show: dialog, label: 'Save', zoom: 1.6});
 }

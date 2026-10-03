@@ -125,9 +125,10 @@ const offCentre = (b, v, keep) => {
   };
 };
 /**
- * Where to put the middle of a zoom on some actions: the middle of what they need, the content the
- * viewer looks at. (Their targets only have to be in view: pulling the middle toward the button
- * that was clicked pushes the content off to a side.) As a zoom focus, in % of the recording.
+ * Where to put the middle of a zoom on some actions: the middle of what they show, their result,
+ * the content the viewer looks at. (Their targets only have to be in view: pulling the middle
+ * toward the button that was clicked pushes the content off to a side.) As a zoom focus, in % of
+ * the recording.
  */
 const middleOf = needBoxes => {
   const u = union(needBoxes);
@@ -178,7 +179,7 @@ function check(d) {
     // centred: while zoomed in, what the beat is about sits in the middle of the view, not off to a
     // side (a zoom framed on several beats at once leaves each of them off-centre)
     // (the target as the action happens, then the target and its result once it has played out)
-    for (const [what, box, a, z, keep, tol] of [['its target', b.target, b.t, b.t + 0.3, need, OFF_CENTRE_TARGET], ['what it shows', need, (b.t + b.end) / 2, b.end, null, OFF_CENTRE]]) {
+    for (const [what, box, a, z, keep, tol] of [['its target', b.target, b.t, b.t + 0.3, need, OFF_CENTRE_TARGET], ['what it shows', result ?? need, (b.t + b.end) / 2, b.end, null, OFF_CENTRE]]) {
       // judged once the camera has settled: mid-zoom it is still on its way to the middle
       const settled = (s, v) => {
         const n = viewAt(s + 0.05, d);
@@ -313,7 +314,8 @@ if (m.zoom.v > MAX_ZOOM_SPEED) harsh.push(`camera zooms too sharply at ${m.zoom.
 if (m.pan.v > MAX_PAN_SPEED) harsh.push(`camera pans too fast at ${m.pan.s.toFixed(1)} s (${m.pan.v.toFixed(1)} view widths/s, at most ${MAX_PAN_SPEED})`);
 // a zoom still on (or still easing out) when the video cuts to another scene carries the camera
 // move across the cut, onto a screen it wasn't framed for
-const acrossCut = z => scenes.find(c => z.start < c && z.end + RAMP > c);
+// (Recordly eases out within a zoom's own span, so it only has to end before the cut)
+const acrossCut = z => scenes.find(c => z.start < c && z.end > c - 0.05);
 for (const z of doc.zooms) if (acrossCut(z) !== undefined) harsh.push(`a zoom (${z.start.toFixed(1)}–${z.end.toFixed(1)} s) runs across the cut at ${acrossCut(z).toFixed(1)} s`);
 const lines = [`# Review: ${project.name}`, '', `${results.length} beats, ${doc.zooms.length} zooms (${doc.motion?.preset} motion), ${failing.length} beats need attention.`, `Motion: peak zoom speed ${m.zoom.v.toFixed(1)} doublings/s at ${m.zoom.s.toFixed(1)} s, peak pan ${m.pan.v.toFixed(1)} view widths/s at ${m.pan.s.toFixed(1)} s.${harsh.map(h => `\n- ✗ ${h}`).join('')}`, ''];
 // The plan's checks (walkthrough.json, from the flow): the length, and when the milestones land
@@ -353,7 +355,7 @@ if (fix) {
       const GLIDE = 1.0, APART = 1.6;
       const isHook = b.label.startsWith('hook · ');
       const gapAfter = z => (hookEnd && z.end <= hookEnd + 0.01 ? APART : GLIDE);
-      const after = Math.min(isHook ? hookEnd - 0.6 : Infinity, ...doc.zooms.filter(z => z.start >= (b.t + b.end) / 2).map(z => z.start - GLIDE), ...beats.filter(n => n.zoom && n.t > b.t).map(n => n.t - 0.2 - GLIDE), ...scenes.filter(c => c > b.t).map(c => c - RAMP - 0.1));
+      const after = Math.min(isHook ? hookEnd - 0.6 : Infinity, ...doc.zooms.filter(z => z.start >= (b.t + b.end) / 2).map(z => z.start - GLIDE), ...beats.filter(n => n.zoom && n.t > b.t).map(n => n.t - 0.2 - GLIDE), ...scenes.filter(c => c > b.t).map(c => c - 0.1));
       const before0 = before;
       for (const z of doc.zooms) if (z.end > b.t - 0.2 - GLIDE && z.start < b.t) z.end = Math.max(z.start + 0.6, Math.min(z.end, b.t - 0.2 - GLIDE));
       // and not before the action ahead of it has played out (what that one needs may not fit)
@@ -364,7 +366,7 @@ if (fix) {
         lines.push(`- ${b.t.toFixed(1)} s ${b.label}: wanted a ${b.zoom}× zoom, but what it needs (${need.w}×${need.h}) only fits at ${amount}×; left unzoomed`);
         continue;
       }
-      const z = {id: `zm-flow-${i}`, start: +Math.max(before0, b.t - 0.8, prevEnd, ...scenes.filter(c => c <= b.t).map(c => Math.ceil(c * 100) / 100), ...doc.zooms.filter(z => z.start < b.t).map(z => z.end + gapAfter(z))).toFixed(2), end: +Math.min(after, b.end + 0.9).toFixed(2), amount, mode: 'manual', focus: middleOf([need])};
+      const z = {id: `zm-flow-${i}`, start: +Math.max(before0, b.t - 0.8, prevEnd, ...scenes.filter(c => c <= b.t).map(c => Math.ceil(c * 100) / 100), ...doc.zooms.filter(z => z.start < b.t).map(z => z.end + gapAfter(z))).toFixed(2), end: +Math.min(after, b.end + 0.9).toFixed(2), amount, mode: 'manual', focus: middleOf([needs[i].result ?? need])};
       doc.zooms.push(z);
       doc.zooms.sort((a, c) => a.start - c.start);
       lines.push(`- ${z.start.toFixed(1)}–${z.end.toFixed(1)} s: added a ${amount}× zoom on ${b.label}, as the flow asked`);
@@ -377,25 +379,25 @@ if (fix) {
   // that share a middle, gliding from one to the next: each one centred while it's on screen.
   const amountFor = (z, need) => Math.min(z.amount, MAX_AMOUNT, Math.floor(capFor(need) * 10) / 10);
   const centredIn = (members, amount) => {
-    const w = W / amount, h = H / amount, m = middleOf(members.map(x => x.need));
+    const w = W / amount, h = H / amount, m = middleOf(members.map(x => x.shows));
     const cx = Math.max(w / 2, Math.min(W - w / 2, (m.x / 100) * W)), cy = Math.max(h / 2, Math.min(H - h / 2, (m.y / 100) * H));
     const v = {x: cx - w / 2, y: cy - h / 2, w, h};
     const ok = (box, keep, tol) => {
       const o = offCentre(box, v, keep);
       return o.x <= tol && o.y <= tol;
     };
-    return members.every(m => ok(m.need, null, OFF_CENTRE) && (!m.target || ok(m.target, m.need, OFF_CENTRE_TARGET)));
+    return members.every(m => ok(m.shows, null, OFF_CENTRE) && (!m.target || ok(m.target, m.need, OFF_CENTRE_TARGET)));
   };
   const PAN = 0.7; // the glide from one group to the next
   /** The zooms z becomes: [z] reframed, or one per group of its beats; [] if none can zoom. */
   const frameZoom = z => {
-    const covered = beats.map((b, i) => ({b, need: needs[i].need})).filter(({b, need}) => need && b.end > z.start && b.t < z.end).sort((p, q) => p.b.t - q.b.t);
+    const covered = beats.map((b, i) => ({b, need: needs[i].need, shows: needs[i].result ?? needs[i].need})).filter(({b, need}) => need && b.end > z.start && b.t < z.end).sort((p, q) => p.b.t - q.b.t);
     if (!covered.length) return [z];
     const groups = [];
     for (const c of covered) {
       const g = groups.at(-1);
       const u = g && union([...g.map(x => x.need), c.need]);
-      if (g && amountFor(z, u) >= MIN_ZOOM && centredIn([...g, c].map(x => ({need: x.need, target: x.b.target})), amountFor(z, u))) g.push(c);
+      if (g && amountFor(z, u) >= MIN_ZOOM && centredIn([...g, c].map(x => ({need: x.need, shows: x.shows, target: x.b.target})), amountFor(z, u))) g.push(c);
       else groups.push([c]);
     }
     // each group's framing first, then its times: the glide to the next group takes long enough
@@ -403,7 +405,7 @@ if (fix) {
     // 2.6 times its average speed)
     const framed = groups.map(g => {
       const need = union(g.map(x => x.need)), amount = amountFor(z, need);
-      return {g, amount, focus: amount >= MIN_ZOOM ? middleOf(g.map(x => x.need)) : null};
+      return {g, amount, focus: amount >= MIN_ZOOM ? middleOf(g.map(x => x.shows)) : null};
     });
     const panFor = (a, b) => {
       if (!a?.focus || !b?.focus) return PAN;
@@ -444,7 +446,7 @@ if (fix) {
     for (const z of [...doc.zooms]) {
       const c = acrossCut(z);
       if (c === undefined) continue;
-      const end = +(c - RAMP - 0.1).toFixed(2);
+      const end = +(c - 0.1).toFixed(2);
       if (end - z.start < 0.6) {
         doc.zooms = doc.zooms.filter(x => x !== z);
         lines.push(`- ${z.start.toFixed(1)}–${z.end.toFixed(1)} s: ${z.amount}× → removed, it ran across the cut at ${c.toFixed(1)} s`);
@@ -465,7 +467,7 @@ if (fix) {
       const last = inZoom.reduce((a, b) => (b.t > a.t ? b : a));
       const nextBeat = beats.filter(b => b.t > last.t + 0.05).reduce((m, b) => Math.min(m, b.t), Infinity);
       const next = zs[k + 1];
-      const bound = Math.min(next ? next.start - GLIDE_GAP : Infinity, ...scenes.filter(c => c > z.start).map(c => c - 0.1), nextBeat + 0.6, rec.durationSec - 0.1);
+      const bound = Math.min(next ? next.start - GLIDE_GAP : Infinity, ...scenes.filter(c => c > z.start).map(c => c - 0.1), nextBeat - 0.05, rec.durationSec - 0.1);
       const want = Math.min(last.end + 0.9, bound);
       if (want > z.end + 0.05) {
         lines.push(`- ${z.start.toFixed(1)}–${z.end.toFixed(1)} s: runs on to ${want.toFixed(1)} s, so ${last.label} can be read before it eases out`);
@@ -492,7 +494,7 @@ if (fix) {
         const before = z.amount;
         z.amount = +(z.amount - 0.1).toFixed(2);
         z.mode = 'manual';
-        z.focus = middleOf(inside.map(i => needs[i].need));
+        z.focus = middleOf(inside.map(i => needs[i].result ?? needs[i].need));
         lines.push(`- ${z.start.toFixed(1)}–${z.end.toFixed(1)} s: ${before}× → ${z.amount}×, wider so its target can be centred too`);
         continue;
       }
@@ -503,7 +505,7 @@ if (fix) {
         lines.push(`- ${z.start.toFixed(1)}–${z.end.toFixed(1)} s: ${before} → removed (${cap < MIN_ZOOM && need ? `what it covers spans ${need.w}×${need.h}, too much to zoom` : `no framing of it worked: ${why(z)}`})`);
         continue;
       }
-      const focus = middleOf(inside.map(i => needs[i].need));
+      const focus = middleOf(inside.map(i => needs[i].result ?? needs[i].need));
       const same = z.mode === 'manual' && z.amount === Math.min(z.amount, cap) && z.focus.x === focus.x && z.focus.y === focus.y;
       z.amount = Math.min(z.amount, cap);
       z.mode = 'manual';
