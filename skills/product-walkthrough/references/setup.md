@@ -18,6 +18,10 @@ sudo apt-get install -y xvfb ffmpeg xdotool openbox xcompmgr feh tesseract-ocr \
 - `tesseract-ocr`: finding controls by their text in apps that aren't web pages (Flutter, native).
 - The `lib*` packages: what Electron and Flutter apps commonly need to start.
 
+For narrated videos: an ElevenLabs API key (`ELEVENLABS_API_KEY`, from the user; never in the
+repo) and, to check the voice without ears, `pip install faster-whisper` (for `walkthrough/hear.py`;
+its speech model downloads on first use).
+
 Chromium: the pipeline uses Playwright's Chromium (`CHROME_PATH`, defaulting to
 `/opt/pw-browsers/chromium-*/chrome-linux/chrome`). If it isn't there: `npx playwright install chromium`
 and set `CHROME_PATH`.
