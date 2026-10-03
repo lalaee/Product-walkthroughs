@@ -1,5 +1,5 @@
 // Instructional captions: one short line per step, drawn by Recordly (its captions track), in a band
-// of background below the recording so they never cover the app.
+// of background above the recording so they never cover the app.
 //
 // A flow gives a step a caption with `caption: 'Click Add website'` on the director call. Each
 // caption comes up just before its step and stays until the next one (the last until the end).
@@ -31,8 +31,8 @@ export function captionsFor(beats, duration) {
 }
 
 /**
- * Puts the captions into a Recordly document: the captions track, their style, and a band below
- * the recording to show them in (the scene's bottom padding), sized for one line.
+ * Puts the captions into a Recordly document: the captions track, their style, and a band above
+ * the recording to show them in (the scene's top padding), sized for one line.
  * `aspect` is the output's width / height; `sourceAspect` the recording's.
  */
 export function applyCaptions(doc, beats, {duration, aspect, sourceAspect = aspect}) {
@@ -45,15 +45,17 @@ export function applyCaptions(doc, beats, {duration, aspect, sourceAspect = aspe
   const H = 1080, W = H * aspect, unit = Math.min(W, H);
   const pad = doc.scene?.padding ?? 40;
   // padding is a % of a quarter of the shorter side (render/compositor.ts layout)
-  const sides = {t: pad, l: pad, r: pad, b: Math.max(pad, (band / (unit * 0.25)) * 100)};
+  const sides = {t: Math.max(pad, (band / (unit * 0.25)) * 100), l: pad, r: pad, b: pad};
   doc.scene = {...doc.scene, sides};
-  // where the band starts: the recording's frame, fitted inside the padding
+  // where the band ends: the top of the recording's frame, fitted inside the padding
   const P = s => (s / 100) * unit * 0.25;
   const innerW = W - P(sides.l) - P(sides.r), innerH = H - P(sides.t) - P(sides.b);
   const fh = Math.min(innerH, innerW / sourceAspect);
-  const frameBottom = P(sides.t) + (innerH - fh) / 2 + fh;
-  // the caption's bottom edge, as Recordly's `bottom` (% of the height from the bottom)
-  doc.captionStyle.bottom = +(((H - (frameBottom + MARGIN + box)) / H) * 100).toFixed(2);
+  const frameTop = P(sides.t) + (innerH - fh) / 2;
+  // the caption box centred in the band; Recordly places it by its bottom edge (`bottom`, % of the
+  // height from the bottom of the video)
+  const top = (frameTop - box) / 2;
+  doc.captionStyle.bottom = +(((H - top - box) / H) * 100).toFixed(2);
   return true;
 }
 

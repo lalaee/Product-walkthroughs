@@ -53,7 +53,7 @@ node walkthrough/finish.mjs out/demo-taskly           # poster frame (baked in a
 
 A step can carry an instructional subtitle: `d.click(button, {caption: 'Click Add website'})`. It
 comes up just before the step and stays until the next caption. Recordly draws them (its captions
-track) in Inter Bold, about 4.7% of the frame's height, in a band of background below the
+track) in Inter Bold, about 4.7% of the frame's height, in a band of background above the
 recording so they never cover the app (`walkthrough/lib/captions.mjs`). `review.mjs --fix` and
 `render.mjs` write them into the project. One line each, at most 48 characters; `record.mjs`
 refuses longer ones. Needs the Inter font installed (`fonts-inter`).
@@ -68,6 +68,11 @@ nothing for lines already made) and paces the flow to them: a narrated step wait
 before it to finish, so lines never overlap and each starts with its step. `finish.mjs` then writes
 `<flow>-narrated.mp4` next to the silent, captioned `<flow>.mp4`. Without a key the flow records
 as before, captions only. Keep the key out of the repo.
+
+The lines are spoken as one continuous take and cut apart by ElevenLabs' character timings: made
+one request each, a clip's first sound tends to come out clipped ("Umami" heard as "Mami").
+`python3 walkthrough/hear.py out/<flow>` listens for you (local speech recognition, `pip install
+faster-whisper`): it checks every line is heard as written, with a confident first word.
 
 ## Use it from a coding agent
 
@@ -263,7 +268,7 @@ zoom. Hold after a click that changes the screen, so the viewer sees what happen
   website, as a tutorial from start to finish: sign in, add the Taskly website (name and domain),
   open its settings and copy the tracking code, open Taskly with that code in its page, and back in
   Umami the visit is there (1 visitor), zoomed on the row of numbers. Each step has an
-  instructional caption below the recording ("Click Add website", "Copy it into the <head> of
+  instructional caption above the recording ("Click Add website", "Copy it into the <head> of
   your pages"). `videos/umami-setup-narrated.mp4` is the same video with voice narration
   (ElevenLabs), the flow paced to the lines: 9 lines, none overlapping, each starting with its
   step; voice at -16 LUFS. Umami is the real app (v3.4.0 from source, unmodified), and

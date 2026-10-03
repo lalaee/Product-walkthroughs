@@ -1,46 +1,72 @@
-// Voice narration with ElevenLabs: each line a step narrates (`narrate: '…'` on a director call),
-// spoken by one voice, cached by its text, so re-recording a flow costs nothing for lines already
-// made.
+// Voice narration with ElevenLabs: the lines a flow's steps narrate (`narrate: '…'` on a director
+// call), spoken by one voice in one take and cut into lines, cached, so re-recording a flow costs
+// nothing until its lines change.
 //
 // Needs ELEVENLABS_API_KEY in the environment. The voice is the flow's `voice` export, or
 // --voice / ELEVENLABS_VOICE. Never put the key in the repo.
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
-import {existsSync, mkdirSync, readFileSync, renameSync, writeFileSync} from 'node:fs';
+import {existsSync, mkdirSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
 import {join} from 'node:path';
 
-export const MODEL = 'eleven_multilingual_v2';
+export const MODEL = 'eleven_turbo_v2_5';
+const SETTINGS = {stability: 0.55, similarity_boost: 0.8, style: 0, use_speaker_boost: true};
+const LEAD_IN = 'Okay.'; // spoken first and cut off: the take's first sound is often clipped
+const GAP = '<break time="1.0s" />';
+const PRE = 0.12; // s kept before a line's first sound, so its opening consonant isn't lost
 
 /** The lines a flow narrates, from its source (`narrate: '…'`), in order. */
 export function narrationLines(source) {
   return [...source.matchAll(/narrate:\s*(['"`])(.*?)\1/g)].map(m => m[2]);
 }
 
-/** The audio for a line: a cached MP3 in `dir`, made with ElevenLabs if it isn't there. */
-export function speak(text, {voice, dir, key = process.env.ELEVENLABS_API_KEY}) {
-  mkdirSync(dir, {recursive: true});
-  const id = createHash('sha256').update(`${MODEL}\n${voice}\n${text}`).digest('hex').slice(0, 16);
-  const file = join(dir, `${id}.mp3`);
-  if (!existsSync(file)) {
-    if (!key) throw new Error('narration needs ELEVENLABS_API_KEY');
-    const tmp = `${file}.part`;
-    // curl, not fetch: it goes through the machine's HTTPS proxy, if it has one
-    const status = execFileSync('curl', ['-sS', '-o', tmp, '-w', '%{http_code}', '-X', 'POST', `https://api.elevenlabs.io/v1/text-to-speech/${voice}?output_format=mp3_44100_128`,
-      '-H', `xi-api-key: ${key}`, '-H', 'content-type: application/json',
-      '-d', JSON.stringify({text, model_id: MODEL, voice_settings: {stability: 0.5, similarity_boost: 0.75}})]).toString();
-    if (status !== '200') throw new Error(`ElevenLabs answered ${status} for "${text}": ${existsSync(tmp) ? readFileSync(tmp, 'utf8').slice(0, 300) : ''}`);
-    renameSync(tmp, file);
-  }
-  const duration = Number(execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', file]).toString().trim());
-  return {text, file, duration};
-}
+const run = (cmd, args) => execFileSync(cmd, args, {maxBuffer: 1 << 28}).toString();
+const durationOf = file => Number(run('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', file]).trim());
 
-/** Makes (or finds) every line a flow narrates; writes `<dir>/lines.json`. Returns {text: {file, duration}}. */
-export function voiceFlow(source, {voice, dir}) {
-  const lines = {};
-  for (const text of narrationLines(source)) lines[text] = speak(text, {voice, dir});
-  writeFileSync(join(dir, 'lines.json'), JSON.stringify({voice, model: MODEL, lines}, null, 2));
-  return lines;
+/**
+ * Every line a flow narrates, spoken as **one take** and cut into lines. Made one request at a
+ * time, each clip's first sound tends to come out clipped ("Umami" heard as "Mami", "Save" as
+ * "ave"); inside one continuous take every line but the first starts mid-speech, as a narrator
+ * reads, and the first follows a lead-in that's cut off. ElevenLabs gives each character's time,
+ * so the take is cut exactly. Cached in `dir` by the lines, voice and settings.
+ * Writes `<dir>/lines.json`; returns {text: {file, duration}}.
+ */
+export function voiceFlow(source, {voice, dir, key = process.env.ELEVENLABS_API_KEY}) {
+  const lines = narrationLines(source);
+  mkdirSync(dir, {recursive: true});
+  const text = `${LEAD_IN} ${GAP} ${lines.join(` ${GAP} `)}`;
+  const id = createHash('sha256').update(JSON.stringify({MODEL, voice, SETTINGS, text})).digest('hex').slice(0, 16);
+  const take = join(dir, `take-${id}.mp3`), timing = join(dir, `take-${id}.json`);
+  if (!existsSync(take)) {
+    if (!key) throw new Error('narration needs ELEVENLABS_API_KEY');
+    const tmp = `${timing}.part`;
+    // curl, not fetch: it goes through the machine's HTTPS proxy, if it has one
+    const status = run('curl', ['-sS', '-o', tmp, '-w', '%{http_code}', '-X', 'POST', `https://api.elevenlabs.io/v1/text-to-speech/${voice}/with-timestamps?output_format=mp3_44100_128`,
+      '-H', `xi-api-key: ${key}`, '-H', 'content-type: application/json', '-d', JSON.stringify({text, model_id: MODEL, voice_settings: SETTINGS})]);
+    if (status !== '200') throw new Error(`ElevenLabs answered ${status}: ${readFileSync(tmp, 'utf8').slice(0, 300)}`);
+    const answer = JSON.parse(readFileSync(tmp, 'utf8'));
+    writeFileSync(take, Buffer.from(answer.audio_base64, 'base64'));
+    writeFileSync(timing, JSON.stringify(answer.alignment));
+    rmSync(tmp);
+  }
+  const al = JSON.parse(readFileSync(timing, 'utf8'));
+  const chars = al.characters.join(''), st = al.character_start_times_seconds, en = al.character_end_times_seconds;
+  if (chars !== text) throw new Error("ElevenLabs' timings don't match the text sent");
+  const out = {};
+  let pos = text.indexOf(GAP) + GAP.length, prevEnd = 0;
+  lines.forEach((line, i) => {
+    const a = chars.indexOf(line, pos), b = a + line.length - 1;
+    pos = b + 1;
+    const next = i + 1 < lines.length ? chars.indexOf(lines[i + 1], pos) : -1;
+    const start = Math.max(prevEnd, st[a] - PRE);
+    const end = Math.min(en[b] + 0.25, next > 0 ? st[next] - 0.15 : Infinity);
+    prevEnd = end;
+    const file = join(dir, `line-${id}-${i}.mp3`);
+    if (!existsSync(file)) run('ffmpeg', ['-v', 'error', '-y', '-ss', start.toFixed(3), '-to', end.toFixed(3), '-i', take, '-c:a', 'libmp3lame', '-q:a', '2', file]);
+    out[line] = {text: line, file, duration: durationOf(file)};
+  });
+  writeFileSync(join(dir, 'lines.json'), JSON.stringify({voice, model: MODEL, lines: out}, null, 2));
+  return out;
 }
 
 /**

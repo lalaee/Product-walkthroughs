@@ -48,7 +48,7 @@ if (process.argv.includes('--fresh') && saved.doc) {
 } else if (saved.doc && saved.doc.motion?.preset !== motion) {
   console.warn(`note: the project's zooms were made with the ${saved.doc.motion?.preset} preset; add --fresh to redo them as ${motion}`);
 }
-// the flow's captions, and the band below the recording they sit in (once Recordly has made the
+// the flow's captions, and the band above the recording they sit in (once Recordly has made the
 // project's document; a fresh project gets them from review.mjs --fix)
 if (saved.doc && existsSync(join(out, 'beats.json'))) {
   const rec = JSON.parse(readFileSync(join(library, readdirSync(library).find(f => f.startsWith('Recording ')), 'recording.json'), 'utf8'));

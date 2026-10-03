@@ -528,8 +528,8 @@ if (fix) {
   const mf = motionOf(doc);
   if (mf.zoom.v > MAX_ZOOM_SPEED) lines.push(`- the camera still zooms too sharply at ${mf.zoom.s.toFixed(1)} s (${mf.zoom.v.toFixed(1)} doublings/s): space those zooms out in the flow`);
   const left = check(doc).filter(r => r.problems.length).length + (mf.zoom.v > MAX_ZOOM_SPEED ? 1 : 0);
-  // the flow's captions, in their band below the recording
-  if (captionWalkthrough(doc, {beats, meta, durationSec: rec.durationSec})) lines.push(`- ${doc.captions.length} captions, in a band below the recording`);
+  // the flow's captions, in their band above the recording
+  if (captionWalkthrough(doc, {beats, meta, durationSec: rec.durationSec})) lines.push(`- ${doc.captions.length} captions, in a band above the recording`);
   project.edited = new Date().toISOString();
   writeFileSync(projectFile, JSON.stringify(project));
   lines.push('', left ? `${left} beats still fail on paper; change the flow (pacing, \`show\`).` : 'All beats pass on paper. Render again (render.mjs), then review again to check the frames.');

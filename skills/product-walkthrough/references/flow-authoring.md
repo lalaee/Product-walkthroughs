@@ -95,7 +95,7 @@ next. Write them as what to do or what you're looking at, in the viewer's terms:
 - end on the result: "…and Umami counts the visit"
 
 Each comes up a moment (0.35 s) before its step. Recordly draws them (its captions track, Inter
-Bold, about 4.7% of the frame height) in a band of background below the recording, so they never
+Bold, about 4.7% of the frame height) in a band of background above the recording, so they never
 cover the app; `review.mjs --fix` and `render.mjs` write them into the project
 (`walkthrough/lib/captions.mjs`). Check in the frames that every caption matches what's on screen.
 
@@ -109,8 +109,13 @@ Write lines that say what the viewer is seeing as it happens; a sentence may run
 ("Now, when someone visits your site," / "Umami counts the visit."). Run `record.mjs` with
 `ELEVENLABS_API_KEY` set (the voice: the flow's `voice`, `--voice` or `ELEVENLABS_VOICE`);
 `finish.mjs` writes `<flow>-narrated.mp4`. Ask the user for their key and voice; never commit the
-key. Listen to the narrated video once: a line that lands on the wrong step means its `narrate`
-belongs on another step.
+key.
+
+The lines are spoken as one continuous take and cut apart (`walkthrough/lib/voice.mjs`): made
+one request at a time, ElevenLabs tends to clip each clip's first sound ("Umami" heard as
+"Mami"). You can't listen, so check with `python3 walkthrough/hear.py out/<flow>` (local speech
+recognition; `pip install faster-whisper`): every line must be heard as written, with a confident
+first word. Also check in `voice.json`/`beats.json` that each line starts with its step.
 
 ## Patterns
 
