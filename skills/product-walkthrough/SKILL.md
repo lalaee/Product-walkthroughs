@@ -1,6 +1,6 @@
 ---
 name: product-walkthrough
-description: Turn an app's repo into a polished, tutorial-style product walkthrough video: run the real app from its source, script one key flow, record it with Recordly (Recorder-2) for smooth auto-zooms and a redrawn cursor, then review it frame by frame until every step is centred, readable and honest. Use this whenever someone wants a demo video, product walkthrough, tutorial video, screen recording, explainer or launch video of an app, a GitHub repo, a web app, or a desktop app, even if they don't say "walkthrough" (e.g. "record how X works", "make a video of setting up Y", "show the signup flow in a video").
+description: "Turn an app's repo into a polished, tutorial-style product walkthrough video: run the real app from its source, script one key flow, record it with Recordly (Recorder-2) for smooth auto-zooms and a redrawn cursor, then review it frame by frame until every step is centred, readable and honest. Use this whenever someone wants a demo video, product walkthrough, tutorial video, screen recording, explainer or launch video of an app, a GitHub repo, a web app, or a desktop app, even if they don't say \"walkthrough\" (e.g. \"record how X works\", \"make a video of setting up Y\", \"show the signup flow in a video\")."
 ---
 
 # Product walkthrough
