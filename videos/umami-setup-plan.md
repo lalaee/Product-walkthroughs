@@ -2,7 +2,6 @@
 
 **What it is:** Umami is privacy-first web analytics: traffic, sources and behaviour, without cookies.
 **For:** People who run a website and want to start measuring it.
-**Hook:** 
 
 ## The flow
 
@@ -16,4 +15,4 @@
 
 - Length: 20–40 s
 - "Add website" by 8 s
-- "copy the tracking code" by 24 s
+- "copy the tracking code" by 27 s

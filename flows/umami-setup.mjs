@@ -22,7 +22,7 @@ export const plan = {
   audience: 'People who run a website and want to start measuring it.',
   flow: ['Sign in to Umami', 'Add a website: its name and domain', "Open the website's settings and copy the tracking code", 'Put the code on the site and visit it', 'Back in Umami, the visit is there'],
   duration: [20, 40],
-  milestones: [{beat: 'Add website', by: 8}, {beat: 'copy the tracking code', by: 24}]
+  milestones: [{beat: 'Add website', by: 8}, {beat: 'copy the tracking code', by: 27}]
 };
 export const poster = 'the first visitor';
 export const share = 'Setting up Umami for a website: add it, copy the one-line tracking code into your page, and the visits start showing up. No cookies, no banner.';

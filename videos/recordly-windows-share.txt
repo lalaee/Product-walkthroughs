@@ -1,1 +1,1 @@
-Recording on Windows with Recordly: New recording, pick your screen, hit Record, use your app, press Ctrl+Shift+2. It comes back already zoomed in on every click; export and you are done.
+Recording on Windows with Recordly: New recording, pick the window, hit Record, use your app, hit Stop. It comes back already zoomed in on every click; export and you are done.

@@ -225,12 +225,12 @@ zoom. Hold after a click that changes the screen, so the viewer sees what happen
 - `videos/umami-setup.mp4`: setting up [Umami](https://github.com/umami-software/umami) for a
   website, as a tutorial from start to finish: sign in, add the Taskly website (name and domain),
   open its settings and copy the tracking code, open Taskly with that code in its page, and back in
-  Umami the visit is there (1 visitor). Umami is the real app (v3.4.0 from source, unmodified), and
+  Umami the visit is there (1 visitor), zoomed on the row of numbers. Umami is the real app (v3.4.0 from source, unmodified), and
   the visit is real: Taskly (the bundled demo page) is served locally with exactly the code that
   was copied (read off the clipboard) in its `<head>`, and Umami's own tracker counts it. Pasting
   the code into the site's HTML happens off camera, in a cut. Taskly's icon in Umami is its logo
-  (Umami fetches icons from an online service this machine can't reach). 31.9 s, 1920×1200 (16:10)
-  at 60 fps, all checks passed. Poster, share copy, plan and contact sheet alongside
+  (Umami fetches icons from an online service this machine can't reach). 34.7 s, 1920×1200 (16:10)
+  at 60 fps, all checks passed (centring included), every action checked at full size. Poster, share copy, plan and contact sheet alongside
   (`videos/umami-setup*`).
 - `videos/umami-traffic.mp4`: [Umami](https://github.com/umami-software/umami) finding out where a
   spike in traffic came from. It opens on the answer, then switches Taskly's dashboard to the last
@@ -259,17 +259,28 @@ zoom. Hold after a click that changes the screen, so the viewer sees what happen
   `apt-get install tesseract-ocr feh libayatana-appindicator3-1 libegl1 libgl1`.
 - `videos/recordly-windows.mp4`: how to record on Windows with Recordly, as a tutorial from start
   to finish on a Windows 11 desktop with Taskly open. From Recordly's home: New recording, Choose
-  what to record (the entire screen, from Recordly's own picker of screens and windows), Record
-  with a 3× countdown, create a project in Taskly, stop with Ctrl+Shift+2, the zoom Recordly
-  suggested from the clicks, playback, and Export → "Your video is ready". Recordly is the real app,
-  run with its interface as it is on Windows (`launchRecordly({platform: 'win'})`): a preload of ours
-  reports Windows before Recordly's own reads the platform, so the recorder offers its screen and
-  window picker and the window has Windows buttons. Underneath it runs on Linux: the capture, the
-  picker's sources and the export are this machine's. Two things are off camera, in cuts: trimming
-  the recorder bar off the start of the recording (on Linux it ends up in it, where Windows would
-  leave it out), and the wait while the export runs. Poster, share copy, plan and contact sheet
-  alongside (`videos/recordly-windows*`). 35.1 s, 1920×1080 at 60 fps; all checks pass but one
-  readability hold (the picker is steady for 1.9 s of the 2.0 s its 24 words want).
+  what to record (the Taskly window, from Recordly's own picker of screens and windows), Record
+  with a 3× countdown, create a project in Taskly, Stop on the recorder bar, the zoom Recordly
+  suggested from the clicks, playback, and Export → "Your video is ready". The recorder bar stays
+  up throughout and isn't in Recordly's recording, because it records the window.
+  - Recordly is the real app, run with its interface as it is on Windows
+    (`launchRecordly({platform: 'win'})`). A preload of ours reports Windows before Recordly's own
+    reads the platform, so the recorder offers its screen and window picker and the window has
+    Windows buttons. Underneath it runs on Linux: the capture, the picker's sources and the export
+    are this machine's. One Windows-only Electron call that path makes (`screen.screenToDipRect`)
+    is filled in from one Linux has.
+  - Why the window, not the whole screen: on Windows, Recordly leaves its bar out of screen
+    recordings. On Linux nothing can, so a whole-screen recording here would have the bar in it.
+  - On Linux a window recording has the real pointer in it, so Recordly's preview shows "Animated
+    cursor unavailable" and draws no smooth cursor of its own there. On Windows it would.
+  - The playback is filmed in slow motion (`walkthrough/lib/slowmo.mjs`): without a GPU, Recordly
+    draws its preview at about 12 fps here. During Play its clock runs 4× slower and that stretch of
+    the video plays 4× faster, so the playback shows at its real speed and frame rate.
+  - Drawn at 4/3 (2560×1440) so the zooms and the preview stay sharp, and exported at Recordly's
+    Standard quality: 1920×1080. The wait while the export runs is cut.
+  - 43.1 s at 60 fps, all checks passed (in view, centred, readable, motion, plan), and every action
+    checked at full size. Poster, share copy, plan and contact sheet alongside
+    (`videos/recordly-windows*`).
 - `videos/demo-taskly.mp4`: the pipeline on the bundled demo page (`demo-app/`): create a project,
   open it, add two tasks, tick one off. 27 s, 1080p60, smooth motion, reviewed and fixed (all
   11 actions in view, peak zoom speed 2.6 doublings/s); its contact sheet is `videos/demo-taskly-review.png`.
