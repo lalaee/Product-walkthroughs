@@ -39,6 +39,13 @@ Recordly is found at `../recorder-2`, or `RECORDLY_DIR`, or `--recordly <dir>`.
 
 Known setup snags:
 
+- Images, fonts or scripts from other sites missing in the recording (broken image icons, a
+  fallback font), with `net::ERR_CERT_AUTHORITY_INVALID` in the browser: the machine reaches the
+  internet through a proxy whose certificate Chromium doesn't trust. Add the proxy's CA bundle to
+  Chromium's store (`apt-get install libnss3-tools`, then
+  `certutil -d sql:$HOME/.pki/nssdb -A -t C,, -n proxy -i <ca.pem>` for each certificate in it).
+  The real site loads them fine; don't film it broken.
+
 - Recordly's Electron binary missing after `npm ci` (no network during postinstall): run
   `node node_modules/electron/install.js` inside the Recorder-2 checkout.
 - A pnpm-based app refusing your pnpm version: `npx -y pnpm@<version from its package.json> install`.
