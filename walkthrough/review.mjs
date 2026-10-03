@@ -413,15 +413,26 @@ if (fix) {
       if (g && amountFor(z, u) >= MIN_ZOOM && centredIn([...g, c].map(x => ({need: x.need, target: x.b.target})), amountFor(z, u))) g.push(c);
       else groups.push([c]);
     }
-    const made = [];
-    groups.forEach((g, k) => {
+    // each group's framing first, then its times: the glide to the next group takes long enough
+    // for the camera not to pan faster than MAX_PAN_SPEED (an eased glide peaks near twice its
+    // average speed)
+    const framed = groups.map(g => {
       const need = union(g.map(x => x.need)), amount = amountFor(z, need);
-      if (amount < MIN_ZOOM) return;
+      return {g, amount, focus: amount >= MIN_ZOOM ? middleOf(g.map(x => x.need), g.map(x => x.b.target), amount) : null};
+    });
+    const panFor = (a, b) => {
+      if (!a?.focus || !b?.focus) return PAN;
+      const w = W / Math.min(a.amount, b.amount), dist = Math.hypot(((a.focus.x - b.focus.x) / 100) * W, ((a.focus.y - b.focus.y) / 100) * H);
+      return Math.min(1.4, Math.max(PAN, (2 * dist) / (w * MAX_PAN_SPEED * 0.9)));
+    };
+    const made = [];
+    framed.forEach(({g, amount, focus}, k) => {
+      if (!focus) return;
       const first = g[0].b, last = g.at(-1).b, next = groups[k + 1]?.[0].b;
-      const start = k === 0 ? z.start : Math.max(made.at(-1) ? made.at(-1).end + 0.35 : z.start, first.t - 0.25);
-      const end = !next ? z.end : Math.max(last.t + 0.4, Math.min(last.end, next.t - 0.25 - PAN));
+      const start = k === 0 ? z.start : Math.max(made.at(-1) ? made.at(-1).end + panFor(framed[k - 1], framed[k]) * 0.5 : z.start, first.t - 0.25);
+      const end = !next ? z.end : Math.max(last.t + 0.4, Math.min(last.end, next.t - 0.25 - panFor(framed[k], framed[k + 1])));
       if (end - start < 0.6) return;
-      made.push({...z, id: groups.length > 1 ? `${z.id}-${k}` : z.id, start: +start.toFixed(2), end: +end.toFixed(2), amount, mode: 'manual', focus: middleOf(g.map(x => x.need), g.map(x => x.b.target), amount)});
+      made.push({...z, id: groups.length > 1 ? `${z.id}-${k}` : z.id, start: +start.toFixed(2), end: +end.toFixed(2), amount, mode: 'manual', focus});
     });
     return made;
   };

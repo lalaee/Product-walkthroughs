@@ -76,7 +76,7 @@ export async function run(d, page) {
     const tracking = page.getByText('Tracking code', {exact: true}).locator('xpath=..');
     await tracking.waitFor();
     const code = tracking.locator('textarea, pre, code').first();
-    await d.point(code, {hold: 2300, show: tracking, label: 'the tracking code', zoom: 1.6});
+    await d.point(code, {hold: 3000, show: tracking, label: 'the tracking code', zoom: 1.6});
     const copy = tracking.getByRole('button').last();
     await d.click(copy, {hold: 1200, show: copy, label: 'copy the tracking code'});
     await page.takeSnippet();
