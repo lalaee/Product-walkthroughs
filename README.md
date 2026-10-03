@@ -45,8 +45,25 @@ node walkthrough/render.mjs out/demo-taskly           # → out/demo-taskly/demo
 node walkthrough/review.mjs out/demo-taskly --fix     # check every zoom, fix the ones that hide the action
 node walkthrough/render.mjs out/demo-taskly           # render with the fixed zooms
 node walkthrough/review.mjs out/demo-taskly           # must pass; then look at review/sheet.png
+node walkthrough/frames.mjs out/demo-taskly           # one full-size frame per step: look at every one
 node walkthrough/finish.mjs out/demo-taskly           # poster frame (baked in as frame 0) and share copy
 ```
+
+## Use it from a coding agent
+
+The whole process (picking the flow, making the app real, scripting it, reviewing it frame by
+frame, reporting what's real) is written up as an agent skill in
+[`skills/product-walkthrough/`](skills/product-walkthrough/SKILL.md): a `SKILL.md` with the
+workflow and `references/` with the detail.
+
+- **Claude Code** picks it up in this repo (`.claude/skills/product-walkthrough` links to it). To
+  use it anywhere, copy the folder to `~/.claude/skills/`.
+- **Codex** reads [`AGENTS.md`](AGENTS.md), **Gemini CLI** reads [`GEMINI.md`](GEMINI.md); both point
+  to the skill. In another repo, add the same few lines to its `AGENTS.md` / `GEMINI.md`, with the
+  path to wherever this repo is cloned.
+- Any other agent: point it at `skills/product-walkthrough/SKILL.md`. It's plain Markdown.
+
+Then ask for what you want, e.g. *"Make a walkthrough video of setting up https://github.com/umami-software/umami"*.
 
 ## Shape: plan, length, tutorial order
 
