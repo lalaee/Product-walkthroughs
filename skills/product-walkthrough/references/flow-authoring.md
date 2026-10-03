@@ -1,7 +1,8 @@
 # Writing a flow
 
-A flow is an ES module in `flows/<name>.mjs`. `record.mjs` imports it, starts the app, and hands
-`run()` a director `d` that performs the steps like a presenter and logs each one as a **beat**
+A flow is an ES module in `flows/<name>.mjs`. `record.mjs` imports it, opens the browser (page
+flows) or the desktop (desktop flows), calls the flow's `setup` / `launch` to get the app ready,
+and hands `run()` a director `d` that performs the steps like a presenter and logs each one as a **beat**
 (what was acted on, what it should show, how long it held) for the review.
 
 ## Exports
@@ -10,7 +11,8 @@ A flow is an ES module in `flows/<name>.mjs`. `record.mjs` imports it, starts th
 | --- | --- |
 | `name` | the video's title (Recordly project name) |
 | `url` | page flows: where the browser starts (`export let url`, so `setup` can change it) |
-| `setup(page)` | page flows: reset state, seed data, route requests; runs before recording |
+| `setup(page)` | page flows: get the app ready before recording: start it if the flow needs a fresh instance, reset state, seed data, route requests |
+| `teardown()` | page flows: stop what `setup` started (a server, a temp directory); called whether or not `setup` or `run` failed |
 | `run(d, page)` / `run(d, ctx)` | the steps |
 | `desktop = true`, `launch(ctx)` | desktop flows: start the apps, return what `run` needs and `close()` (see `desktop-apps.md`) |
 | `background` | desktop flows: wallpaper image or HTML page (e.g. `'../desktops/windows11/desktop.html'`) |
@@ -18,10 +20,10 @@ A flow is an ES module in `flows/<name>.mjs`. `record.mjs` imports it, starts th
 | `scale` | pixel density: `4/3` gives HD with room to zoom (1440×900 → 1920×1200) |
 | `aspect` | the video's shape in Recordly: `'16:10'`, `'16:9'`, `'1:1'`… |
 | `quality` | Recordly's export quality: `'original'` (default), `'high'` (0.9), `'standard'` (0.75) |
-| `lead` | ms of the starting screen before the first step (400 to 600) |
-| `plan` | `{what, audience, flow: [steps], duration: [min, max], milestones: [{beat, by}]}`; the review checks length and milestones |
+| `lead` | ms of the starting screen before the first step (default 1200; 400 to 600 reads better) |
+| `plan` | `{what, audience, flow: [steps], duration: [min, max], milestones: [{beat, by}]}`; `duration` and `by` are seconds of the **finished** video (after cuts and speed-ups); `beat` is a step's `label` |
 | `poster` | label of the beat whose end makes the poster frame (usually the result) |
-| `share` | a one or two sentence caption for posting the video; may be a function of a value read on screen |
+| `share` | a one or two sentence caption for posting the video. A string; to use a value read on screen, `export let share` and assign it at the end of `run` |
 
 ## The director
 
@@ -30,8 +32,8 @@ boxes. In desktop flows, also OCR'd text: `win.text('Send')` (see `desktop-apps.
 
 | call | does |
 | --- | --- |
-| `d.click(target, {hold, show, label, zoom, after})` | travel, click, hold. `after: async () => …` runs during the hold instead of waiting |
-| `d.type(target, text, {delay, hold, show, label, zoom})` | click the field, type at a readable pace |
+| `d.click(target, {hold, show, label, zoom, after})` | travel, click, hold. With `after: async () => …`, that runs instead of the hold (150 ms after the click) and the step ends when it resolves: use it for something that happens *as part of* the step and is filmed, like playback in slow motion. To wait for something the viewer needn't see (a navigation), use `d.idle` after the click instead |
+| `d.type(target, text, {delay, hold, show, label, zoom})` | click the field, type at a readable pace. Works on rich editors too (CodeMirror, ProseMirror, Lexical): target the editable element, and `show` the whole editor card |
 | `d.press(key, {hold, show, label})` | a key or shortcut (`'Control+Shift+2'`); shortcuts show as keycaps |
 | `d.point(target, {hold, show, label, zoom})` | travel and rest on something: draws the eye without clicking |
 | `d.scroll(target, {hold, show, label})` | smooth-scroll until the target is mid-screen |
@@ -58,7 +60,9 @@ centres on it, so:
 
 ### `hold`: long enough to read
 
-Roughly 0.15 s per visible word (labels are read at a glance), at least 0.8 s, 2 to 3 s for a
+`hold` is the time after the action itself (after the click, after the last typed character);
+the pointer's travel comes before it and isn't counted. Camera moves happen during it, so the
+review measures how long the view is actually still. Roughly 0.15 s per visible word (labels are read at a glance), at least 0.8 s, 2 to 3 s for a
 dense panel or code. The review measures how long the camera actually stays still and fails a
 step that's too short. Since zoom transitions eat into a hold, give the steps that matter (the
 result, a code snippet, the final number) the most.
@@ -67,7 +71,12 @@ result, a code snippet, the final number) the most.
 
 Ask for a zoom (`zoom: 1.6`, at most 2) on steps where the detail matters: a form being filled,
 a snippet, the result. Leave wide results unzoomed: a whole page, a table, a desktop with
-several windows. The review's fixer adds the zooms you asked for, centres every zoom on its
+several windows.
+
+A zoom isn't per step: the fixer puts neighbouring steps whose results share a middle into one
+zoom. So ask for it on the first step of a group (the first field of a form) and give the
+following steps the same `show` (the form): the camera stays put through all of them. The
+review's fixer adds the zooms you asked for, centres every zoom on its
 step's result, splits a zoom whose steps need different places, and removes zooms that can't
 frame their steps.
 
@@ -98,6 +107,11 @@ end of `run` from what the app shows.
 full speed (an editor previewing a video, an animation), run the page's clock slower and play
 that stretch faster: see `walkthrough/lib/slowmo.mjs` and `finishInEditor(…, {slow: 4})` in
 `flows/recordly-steps.mjs`. The viewer sees it at real speed and frame rate. Disclose it.
+
+**Menus, dropdowns and popovers.** Open it with a click whose `show` is the menu (the listbox or
+popover, not its trigger), then click the option; picking closes it. To close it without
+choosing (looking is the point), `d.press('Escape')`. Don't zoom on a menu that drops over a wide
+area; zoom on its trigger's neighbourhood or not at all.
 
 **Do what a user does.** Click the button a user would click, not a shortcut they wouldn't know;
 pick the option a first-time user would pick.

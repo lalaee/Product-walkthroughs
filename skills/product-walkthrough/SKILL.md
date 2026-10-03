@@ -15,8 +15,11 @@ and that's what decides whether the video is good: which flow, how the app is ma
 each step is scripted, and what you check before calling it done.
 
 If you're working in the app's own repo, clone the pipeline next to it (`references/setup.md`),
-write the flow there, and run the commands below from the pipeline's root. Paths to scripts and
-example flows are relative to that root; `references/` is next to this file.
+write the flow in the pipeline's `flows/`, and run the commands below from the pipeline's root.
+Paths to scripts and example flows are relative to that root; `references/` is next to this file.
+Point the flow at the app through an environment variable with a sensible default
+(`UMAMI_URL ?? 'http://localhost:3100'`, `LOCALSEND_APP ?? '/home/user/apps/localsend/…'`), never a
+hard-coded path into someone's checkout.
 
 Work through the steps in order. Each one has a reference file with the detail; read it when you
 get there, not all at once.
@@ -26,11 +29,34 @@ get there, not all at once.
 Linux with Xvfb, ffmpeg, Chromium (Playwright's), Node 20+, and Recorder-2 built next to this repo.
 Details and the full package list: `references/setup.md`. Check it works with the demo before
 touching the user's app (`node walkthrough/record.mjs flows/demo-taskly.mjs` then the render
-step); a broken setup found later costs a full recording cycle.
+step); a broken setup found later costs a full recording cycle. If Recorder-2 won't build or the
+demo won't render, stop and tell the user what failed: the finished video depends on it, and a
+screen recording without it isn't this product.
 
-## 1. Understand the app and pick the flow
+## 1. Get the real app running
 
-Read the app's README and docs, and run it (step 2) before deciding. Then pick **one** flow:
+Read the app's README and docs, then build and run the real app, unmodified; don't rebuild its
+UI. Its own release (a tagged binary, the official image) counts as the real app; so does a
+build from source. Use whichever runs on this machine (Docker often isn't available in agent
+containers), and say which in the report. If it needs a
+database, run one. If a screen needs data (a dashboard with traffic, a list with items), put it
+there **through the app's own API or import**, so every number on screen is the app's own.
+
+Where you have to stand something in (a phone the app talks to, a site icon from a service you
+can't reach, a backend you don't have), make the stand-in real enough to exercise the app for
+real, and write down what it is: it goes in the report and the README.
+
+Every run should start from the same state. If the flow goes through a one-time first-run
+screen (create the admin, set up the instance), each run needs a **fresh instance** (a new data
+directory or database), started by the flow's `setup` and stopped by its `teardown`. Otherwise,
+reset through the app's API in `setup`.
+
+Detail, including clean state, seeding, stand-ins and what to disclose:
+`references/making-it-real.md`.
+
+## 2. Pick the flow
+
+With the app running in front of you (step 1), pick **one** flow:
 
 - The one a new user needs first is usually the best: setting it up, the first real task, the
   "aha" moment. "Set up analytics for your website" beat "find where a traffic spike came from"
@@ -47,18 +73,6 @@ video to it.
 
 **Tutorial order, no hook.** Start at the beginning of the flow and go to the end. Don't open on
 the payoff and cut back; it confuses someone trying to follow along.
-
-## 2. Make the app real
-
-Build and run the real app from its repo, unmodified; don't rebuild its UI. If it needs a
-database, run one. If a screen needs data (a dashboard with traffic, a list with items), put it
-there **through the app's own API or import**, so every number on screen is the app's own.
-
-Where you have to stand something in (a phone the app talks to, a site icon from a service you
-can't reach, a backend you don't have), make the stand-in real enough to exercise the app for
-real, and write down what it is: it goes in the report and the README.
-
-Detail, including seeding, stand-ins and what to disclose: `references/making-it-real.md`.
 
 ## 3. Script the flow
 

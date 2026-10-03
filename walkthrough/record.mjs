@@ -12,8 +12,9 @@
 // A flow may also export `size` ('1440x900'), `scale` (pixel density, 2 for Retina; --scale) and `aspect` (Recordly's video shape for the finished
 // video: '1:1', '16:9', '9:16'…; render.mjs picks it).
 //
-// Two kinds of flow. A page flow exports `url` (and optionally `setup(page)`): the app runs in a
-// browser and only its page is captured; `run(d, page)`. A desktop flow exports `desktop = true` and
+// Two kinds of flow. A page flow exports `url` (and optionally `setup(page)`, which may start the app
+// itself, and `teardown()`, which stops what setup started, run even if setup or run fails): the
+// app runs in a browser and only its page is captured; `run(d, page)`. A desktop flow exports `desktop = true` and
 // `launch({display, env, desktop, out, width, height, recordly})`, which starts its apps on a
 // desktop (window manager and all), registers their pages with `desktop.register(page, origin)`
 // and returns what `run(d, ctx)` needs plus `close()`; the whole screen is captured and the
@@ -99,7 +100,15 @@ if (flow.desktop) {
   await page.waitForTimeout(500);
   m = await measure();
   if (m.iw !== width || m.ih !== height) throw new Error(`couldn't size the page to ${width}×${height} (it is ${m.iw}×${m.ih})`);
-  if (flow.setup) await flow.setup(page);
+  if (flow.setup) {
+    try {
+      await flow.setup(page);
+    } catch (err) {
+      // what setup started (a server, say) stops even when setup itself fails
+      if (flow.teardown) await flow.teardown().catch(() => {});
+      throw err;
+    }
+  }
   await page.goto(flow.url, {waitUntil: 'networkidle'});
   await page.waitForTimeout(800);
   target = {surface: new PageSurface(page), ctx: page, area: {x: Math.round((m.sx + (m.ow - m.iw)) * scale), y: Math.round((m.sy + (m.oh - m.ih)) * scale)}, display: screen.display, close: async () => {
@@ -135,6 +144,8 @@ await new Promise(r => setTimeout(r, 1000));
 ff.stdin.write('q');
 await ffDone;
 await target.close();
+// a page flow's own cleanup (what its setup started), whether or not the run worked
+if (flow.teardown) await flow.teardown().catch(err => console.warn(`teardown: ${err.message}`));
 if (failure) {
   console.error(`the flow failed after ${((Date.now() - started) / 1000).toFixed(1)} s: ${failure.message}\nthe screen then: ${join(out, 'failure.png')}`);
   process.exit(1);

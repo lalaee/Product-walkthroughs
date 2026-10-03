@@ -12,7 +12,14 @@ filming without faking it, and being clear about the few places you had to.
 - Give it what it needs for real: a Postgres or MySQL if it uses one (a local one is fine), its
   `.env` from the example file, a fresh admin account. Turn off telemetry and update checks
   where there's a setting for it.
-- Use a released version (a tag) when there is one, and note it (e.g. "Umami v3.4.0").
+- Use a released version (a tag) when there is one, and note it (e.g. "Umami v3.4.0"). The
+  project's own release artifact (its binary, its official container image) is as real as a
+  source build; use whichever runs here. Agent containers often have no Docker, so a release
+  binary or a source build is usually the way.
+- Decide who starts it. A long-lived app you reset through its API can run on its own between
+  recordings (start it once, check it's up before each run). An app whose flow goes through a
+  first-run screen needs a fresh instance every run: start it in `setup` (fresh data directory or
+  database, wait for its health check) and stop it in `teardown`.
 - Don't modify the app. If you truly must (it won't start on this machine without a patch), keep
   the patch minimal, say so in the report, and never change what the viewer sees.
 
@@ -23,6 +30,8 @@ doesn't leave junk behind. Do it in the flow's `setup` (page flows) or `launch` 
 
 - Reset through the app's API: delete what the last run created (e.g. all websites), then create
   what the flow starts from.
+- One-time setup screens (create the first admin, name the instance) only show on a fresh
+  install: no API reset brings them back. Give each run its own data directory.
 - Start desktop apps with a fresh home or profile directory and the settings a first-time user
   would have, minus the noise (an onboarding tour the flow isn't about, a "what's new" popup).
 - Sign in off camera when signing in isn't part of the flow (log in through the API and put the
