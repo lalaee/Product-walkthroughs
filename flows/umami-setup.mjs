@@ -24,7 +24,7 @@ export const plan = {
   audience: 'People who run a website and want to start measuring it.',
   flow: ['Sign in to Umami', 'Add a website: its name and domain', "Open the website's settings and copy the tracking code", 'Put the code on the site and visit it', 'Back in Umami, the visit is there'],
   duration: [20, 40],
-  milestones: [{beat: 'Add website', by: 8}, {beat: 'copy the tracking code', by: 27}]
+  milestones: [{beat: 'Add website', by: 11}, {beat: 'copy the tracking code', by: 27}]
 };
 export const poster = 'the first visitor';
 export const share = 'Setting up Umami for a website: add it, copy the one-line tracking code into your page, and the visits start showing up. No cookies, no banner.';
@@ -62,13 +62,13 @@ export async function run(d, page) {
   await user.waitFor();
   await d.type(user, 'admin', {label: 'Username', caption: 'Sign in to Umami', narrate: "Umami is simple, privacy-friendly web analytics. Let's set it up for a website. First, sign in."});
   await d.type(page.locator('input[name=password]'), 'umami', {label: 'Password'});
-  await d.click(page.getByRole('button', {name: 'Login'}), {hold: 1200, show: page.getByRole('button', {name: 'Add website'}), label: 'Login'});
+  await d.click(page.getByRole('button', {name: 'Login'}), {hold: 1800, show: page.getByRole('button', {name: 'Add website'}), label: 'Login'});
 
   // 2. add the website
   await d.click(page.getByRole('button', {name: 'Add website'}), {hold: 1100, show: page.getByRole('dialog'), label: 'Add website', caption: 'Click Add website', narrate: 'Click Add website.'});
   const dialog = page.getByRole('dialog');
   await d.type(dialog.locator('input[name=name]'), 'Taskly', {hold: 800, label: 'Name', zoom: 1.6, show: dialog, caption: "Enter a name and your site's domain", narrate: 'Give it a name, and the domain your site lives on.'});
-  await d.type(dialog.locator('input[name=domain]'), 'taskly.app', {label: 'Domain', show: dialog});
+  await d.type(dialog.locator('input[name=domain]'), 'taskly.app', {hold: 900, label: 'Domain', show: dialog});
   await d.click(dialog.getByRole('button', {name: 'Save'}), {hold: 1200, show: page.getByRole('row', {name: /Taskly/}), label: 'Save', caption: 'Save it: your website is now in the list', narrate: "Save, and it's in your list."});
 
   // 3. its tracking code, in its settings
