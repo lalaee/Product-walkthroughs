@@ -1,6 +1,7 @@
 // How to record on Windows with Recordly, as a tutorial from start to finish: from Recordly's home,
-// open the recorder, choose what to record (the whole screen), record a short Taskly session, stop
-// with the shortcut, check the zoom Recordly suggested, play it back and export the video.
+// open the recorder, choose what to record (the Taskly window), record a short Taskly session, stop
+// with the bar's Stop button, check the zoom Recordly suggested, play it back and export the video.
+// The recorder bar stays up throughout; recording a window, it isn't in the recording.
 //
 // The desktop is the Windows 11 UI Kit's (desktops/windows11). Runs Recordly (Recorder-2) for real,
 // with real input (a desktop flow, see walkthrough/record.mjs), its interface as it is on Windows
@@ -17,25 +18,29 @@ export const name = 'Recordly — how to record on Windows';
 export const desktop = true;
 export const size = '1920x1080';
 export const aspect = '16:9';
+// drawn at 4/3 (2560×1440 pixels), so the zooms and Recordly's preview stay sharp; exported at
+// Recordly's Standard quality, 0.75 of that: 1920×1080
+export const scale = 4 / 3;
+export const quality = 'standard';
 export const background = '../desktops/windows11/desktop.html';
 
 // The plan: what this video is for, and what the review holds it to.
 export const plan = {
   what: 'Recordly records your screen and turns it into a polished video, zooming in where you clicked.',
   audience: 'People who make product demos and walkthroughs on Windows.',
-  flow: ['Recordly is open; Taskly is the app to record', 'New recording: the recorder bar', 'Choose what to record: the entire screen', 'Record: 3, 2, 1', 'Create a project in Taskly while it records', 'Stop with Ctrl+Shift+2', 'Recordly has already suggested a zoom from the clicks', 'Play it back', 'Export: the MP4 is ready'],
+  flow: ['Recordly is open; Taskly is the app to record', 'New recording: the recorder bar', 'Choose what to record: the Taskly window', 'Record: 3, 2, 1', 'Create a project in Taskly while it records', 'Stop, on the recorder bar', 'Recordly has already suggested a zoom from the clicks', 'Play it back', 'Export: the MP4 is ready'],
   duration: [30, 50],
-  milestones: [{beat: 'Record', by: 12}, {beat: 'Stop (Ctrl+Shift+2)', by: 26}, {beat: 'Export', by: 40}]
+  milestones: [{beat: 'Record', by: 12}, {beat: 'Stop', by: 26}, {beat: 'Export', by: 40}]
 };
 export const lead = 400;
 // the poster: the finished video, exported
 export const poster = 'Save';
-export const share = 'Recording on Windows with Recordly: New recording, pick your screen, hit Record, use your app, press Ctrl+Shift+2. It comes back already zoomed in on every click; export and you are done.';
+export const share = 'Recording on Windows with Recordly: New recording, pick the window, hit Record, use your app, hit Stop. It comes back already zoomed in on every click; export and you are done.';
 
 const taskly = pathToFileURL(new URL('../demo-app/index.html', import.meta.url).pathname).href;
 const TASKBAR = 48;
 
-export async function launch({env, desktop, out, width, height, recordly}) {
+export async function launch({env, desktop, out, width, height, scale, recordly}) {
   // Taskly in an app window, where the design's window sits (its rectangle at 11% / 11%, 78% wide)
   const win = {x: Math.round(width * 0.11), y: Math.round(height * 0.09), w: Math.round(width * 0.78), h: Math.round((height - TASKBAR) * 0.76)};
   const context = await chromium.launchPersistentContext(mkdtempSync(join(tmpdir(), 'taskly-')), {
@@ -43,7 +48,7 @@ export async function launch({env, desktop, out, width, height, recordly}) {
     headless: false,
     viewport: null,
     // (--test-type and no Google keys: no warning bars across the window)
-    args: [`--app=${taskly}`, `--window-position=${win.x},${win.y}`, `--window-size=${win.w},${win.h}`, '--test-type', '--no-first-run', '--disable-infobars', '--hide-crash-restore-bubble', '--force-device-scale-factor=1'],
+    args: [`--app=${taskly}`, `--window-position=${win.x},${win.y}`, `--window-size=${win.w},${win.h}`, '--test-type', '--no-first-run', '--disable-infobars', '--hide-crash-restore-bubble', `--force-device-scale-factor=${scale}`],
     env: {...env, GOOGLE_API_KEY: 'no', GOOGLE_DEFAULT_CLIENT_ID: 'no', GOOGLE_DEFAULT_CLIENT_SECRET: 'no'}
   });
   const page = context.pages()[0] ?? (await context.waitForEvent('page'));
@@ -58,7 +63,7 @@ export async function launch({env, desktop, out, width, height, recordly}) {
   const downloads = join(out, 'recordly-exports');
   rmSync(downloads, {recursive: true, force: true});
   mkdirSync(downloads, {recursive: true});
-  const rec = await launchRecordly({dir: recordly, env, library, downloads, platform: 'win', settings: {hideRecorder: false}});
+  const rec = await launchRecordly({dir: recordly, env, library, downloads, scale, platform: 'win', settings: {hideRecorder: false}});
   const main = await rec.window('main');
   desktop.register(main, rec.origin(main));
   await (await rec.app.browserWindow(main)).evaluate((w, b) => w.setBounds(b), {x: 0, y: 0, width, height: height - TASKBAR});
@@ -103,14 +108,14 @@ export async function run(d, ctx) {
   const bar = overlay.locator('[aria-label="Recorder"]');
   const desktopView = [bar, taskly.locator('body')];
   await d.click(main.getByRole('button', {name: 'New recording'}).last(), {hold: 1400, show: desktopView, label: 'New recording'});
-  // 2. what to record: the entire screen
+  // 2. what to record: the Taskly window
   const picker = overlay.getByRole('dialog');
   await d.click(overlay.getByRole('button', {name: 'Choose what to record'}), {hold: 2900, show: picker, label: 'Choose what to record'});
-  await d.click(picker.getByText('Entire screen'), {hold: 1000, show: desktopView, label: 'Entire screen'});
-  // 3. record Taskly, stop
-  const trimAt = await recordTaskly(d, ctx);
-  // 4. in the editor: the suggested zoom, playback
-  await finishInEditor(d, ctx, trimAt);
+  await d.click(picker.getByText('Taskly', {exact: true}), {hold: 1000, show: desktopView, label: 'the Taskly window'});
+  // 3. record Taskly, stop on the bar
+  await recordTaskly(d, ctx, {hide: false});
+  // 4. in the editor: the suggested zoom, playback (in slow motion, played back at its real speed)
+  await finishInEditor(d, ctx, null, {slow: 4});
   // 5. export
   const dialog = main.getByRole('dialog');
   await d.click(main.getByRole('button', {name: 'Export', exact: true}).first(), {hold: 1200, show: dialog, label: 'Export'});

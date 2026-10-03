@@ -24,7 +24,8 @@ export function recordlyNative(dir) {
  * `platform` ('win' or 'mac') runs Recordly's interface as it is on that system: Recordly reads the
  * platform once, in its preload, so a preload of ours that runs first reports that one. Only the
  * interface follows (on Windows: the recorder's own screen and window picker, Windows window
- * buttons); everything underneath still runs on this machine.
+ * buttons); everything underneath still runs on this machine, with the one Windows-only Electron
+ * call that path makes (screen.screenToDipRect) filled in.
  */
 export async function launchRecordly({dir, env = process.env, library, motion = 'smooth', settings = {}, recorder = {}, downloads, scale, platform}) {
   const userData = mkdtempSync(join(tmpdir(), 'recordly-profile-'));
@@ -53,6 +54,15 @@ export async function launchRecordly({dir, env = process.env, library, motion = 
     const preload = join(userData, 'platform-preload.cjs');
     writeFileSync(preload, `Object.defineProperty(process, 'platform', {value: ${JSON.stringify({win: 'win32', mac: 'darwin'}[platform])}});\n`);
     await app.evaluate(({session}, filePath) => session.defaultSession.registerPreloadScript({type: 'frame', filePath}), preload);
+    // Electron's Windows-only screen.screenToDipRect, which Recordly's main process uses to place a
+    // window recording there: here, made of screenToDipPoint (which Electron has on Linux too)
+    await app.evaluate(({screen}) => {
+      if (screen.screenToDipRect) return;
+      screen.screenToDipRect = (_window, r) => {
+        const a = screen.screenToDipPoint({x: r.x, y: r.y}), b = screen.screenToDipPoint({x: r.x + r.width, y: r.y + r.height});
+        return {x: a.x, y: a.y, width: b.x - a.x, height: b.y - a.y};
+      };
+    });
     // the windows that are already open load again, with it
     for (const w of app.windows()) await w.reload().catch(() => {});
   }

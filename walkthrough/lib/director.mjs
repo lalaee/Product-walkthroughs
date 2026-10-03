@@ -145,7 +145,8 @@ export class Director {
   }
 
   /** Moves to the target and clicks it, then holds for `hold` ms so the viewer sees the result. */
-  async click(target, {hold = 700, show, label, zoom} = {}) {
+  /** `after`: what happens during the hold instead of waiting it out (it ends the beat when it's done). */
+  async click(target, {hold = 700, show, label, zoom, after} = {}) {
     const done = await this.#beat('click', label, target, null, show, zoom);
     const p = await this.moveTo(target);
     await sleep(140);
@@ -158,7 +159,8 @@ export class Director {
     // what's under the pointer may have changed (a dialog closed, a page opened)
     await sleep(Math.min(hold, 150));
     await this.#shape({force: true});
-    await sleep(Math.max(0, hold - 150));
+    if (after) await after();
+    else await sleep(Math.max(0, hold - 150));
     await done();
   }
 

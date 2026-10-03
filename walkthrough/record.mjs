@@ -221,7 +221,7 @@ const inCut = t => cuts.some(([a, b]) => t > a && t < b);
 const beats = d.beats.filter(b => !inCut(b.t)).map(b => ({...b, t: sec(playsMain(b.t)), end: sec(playsMain(b.end ?? b.t))}));
 // what the flow says about the finished video (its shape, plan, poster, share copy), for render.mjs,
 // review.mjs and finish.mjs
-writeFileSync(join(out, 'walkthrough.json'), JSON.stringify({name: recName, aspect: flow.aspect ?? 'native', width, height, scale, plan: flow.plan ?? null, poster: flow.poster ?? null, share: flow.share ?? null}, null, 2));
+writeFileSync(join(out, 'walkthrough.json'), JSON.stringify({name: recName, aspect: flow.aspect ?? 'native', width, height, scale, plan: flow.plan ?? null, poster: flow.poster ?? null, share: flow.share ?? null, quality: flow.quality ?? null}, null, 2));
 // where the video jumps from one scene to another (an idle cut): no zoom should run across one
 const scenes = [...new Set(d.scenes.map(t => sec(playsMain(t))))].sort((a, b) => a - b);
 writeFileSync(join(out, 'beats.json'), JSON.stringify({width, height, beats, scenes}, null, 2));

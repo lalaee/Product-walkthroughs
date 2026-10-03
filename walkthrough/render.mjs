@@ -34,7 +34,7 @@ const motion = arg('motion', 'smooth');
 // the video's shape: --aspect, else what the flow asked for (walkthrough.json), else the recording's own
 const meta = existsSync(join(out, 'walkthrough.json')) ? JSON.parse(readFileSync(join(out, 'walkthrough.json'), 'utf8')) : {};
 const aspect = arg('aspect', meta.aspect ?? 'native');
-const quality = arg('quality', 'original');
+const quality = arg('quality', meta.quality ?? 'original');
 const fps = arg('fps', '60');
 const cursorSize = Number(arg('cursor', '2.5'));
 const projectFile = join(library, 'Projects', readdirSync(join(library, 'Projects')).find(f => f.endsWith('.recordly')));
