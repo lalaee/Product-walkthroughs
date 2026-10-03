@@ -43,7 +43,8 @@ const preset = doc.motion?.preset ?? 'focused';
 const MARGIN = 1.1; // room around the needed area, so it isn't flush with the edge of the view
 const MIN_ZOOM = 1.3; // below this a zoom isn't worth its motion
 const MAX_AMOUNT = 2; // tighter than this loses the context around the action
-const OFF_CENTRE = 0.12; // how far (in view widths / heights) the subject may sit from the middle
+const OFF_CENTRE = 0.12; // how far (in view widths / heights) the content may sit from the middle
+const OFF_CENTRE_TARGET = 0.2; // and the thing acted on, as it's acted on (the content comes first)
 const CONNECT_GAP = 1.5; // Recordly glides between zooms closer than this (render/motion.ts)
 
 // ---------------------------------------------------------------- camera
@@ -124,29 +125,13 @@ const offCentre = (b, v, keep) => {
   };
 };
 /**
- * Where to put the middle of a zoom on some actions: halfway between the middle of what they need
- * and the middle of their targets, so neither the result nor the thing acted on sits off to a side.
- * As a zoom focus, in % of the recording.
+ * Where to put the middle of a zoom on some actions: the middle of what they need, the content the
+ * viewer looks at. (Their targets only have to be in view: pulling the middle toward the button
+ * that was clicked pushes the content off to a side.) As a zoom focus, in % of the recording.
  */
-const middleOf = (needBoxes, targetBoxes = [], amount = 1.5) => {
-  const u = union(needBoxes), t = union(targetBoxes.filter(Boolean));
-  const p0 = {x: u.x + u.w / 2, y: u.y + u.h / 2};
-  let best = p0;
-  if (t) {
-    // along the line from the result's middle to the target's: the point where the worse of the two
-    // sits closest to the middle of the view
-    const w = W / amount, h = H / amount, p1 = {x: t.x + t.w / 2, y: t.y + t.h / 2};
-    const worst = p => {
-      const v = {x: p.x - w / 2, y: p.y - h / 2, w, h}, a = offCentre(u, v), b = offCentre(t, v, u);
-      return Math.max(a.x, a.y, b.x, b.y);
-    };
-    let bestScore = Infinity;
-    for (let k = 0; k <= 10; k++) {
-      const p = {x: p0.x + ((p1.x - p0.x) * k) / 10, y: p0.y + ((p1.y - p0.y) * k) / 10}, sc = worst(p);
-      if (sc < bestScore - 1e-6) [best, bestScore] = [p, sc];
-    }
-  }
-  return {x: +((best.x / W) * 100).toFixed(2), y: +((best.y / H) * 100).toFixed(2)};
+const middleOf = needBoxes => {
+  const u = union(needBoxes);
+  return {x: +(((u.x + u.w / 2) / W) * 100).toFixed(2), y: +(((u.y + u.h / 2) / H) * 100).toFixed(2)};
 };
 const span = (a, b) => Array.from({length: Math.max(1, Math.round((b - a) / 0.05)) + 1}, (_, k) => a + k * 0.05).filter(s => s <= b + 1e-9);
 
@@ -193,18 +178,18 @@ function check(d) {
     // centred: while zoomed in, what the beat is about sits in the middle of the view, not off to a
     // side (a zoom framed on several beats at once leaves each of them off-centre)
     // (the target as the action happens, then the target and its result once it has played out)
-    for (const [what, box, a, z, keep] of [['its target', b.target, b.t, b.t + 0.3, need], ['what it shows', need, (b.t + b.end) / 2, b.end]]) {
+    for (const [what, box, a, z, keep, tol] of [['its target', b.target, b.t, b.t + 0.3, need, OFF_CENTRE_TARGET], ['what it shows', need, (b.t + b.end) / 2, b.end, null, OFF_CENTRE]]) {
       // judged once the camera has settled: mid-zoom it is still on its way to the middle
       const settled = (s, v) => {
         const n = viewAt(s + 0.05, d);
         return Math.abs(n.amount - v.amount) < 0.004 && Math.hypot(n.x + n.w / 2 - (v.x + v.w / 2), n.y + n.h / 2 - (v.y + v.h / 2)) < W * 0.0015;
       };
       const offs = box ? span(a, z).map(s => ({s, v: viewAt(s, d)})).filter(({s, v}) => v.amount > 1.05 && settled(s, v)).map(x => ({...x, o: offCentre(box, x.v, keep)})) : [];
-      const offBad = offs.filter(x => x.o.x > OFF_CENTRE || x.o.y > OFF_CENTRE);
+      const offBad = offs.filter(x => x.o.x > tol || x.o.y > tol);
       if (!offs.length || offBad.length <= offs.length / 2) continue;
       const f = offBad.reduce((p, c) => (Math.max(c.o.x, c.o.y) > Math.max(p.o.x, p.o.y) ? c : p));
       zoomsAt(f.s, d).forEach(x => zooms.add(x));
-      problems.push(`off-centre at ${f.s.toFixed(1)} s: ${what} sits ${Math.round(Math.max(f.o.x, f.o.y) * 100)}% of the view from its middle (at most ${OFF_CENTRE * 100}%)`);
+      problems.push(`off-centre at ${f.s.toFixed(1)} s: ${what} sits ${Math.round(Math.max(f.o.x, f.o.y) * 100)}% of the view from its middle (at most ${tol * 100}%)`);
     }
     const zoomed = b.zoom && d.zooms.some(z => z.start < b.end && z.end > (b.t + b.end) / 2);
     if (b.zoom && !zoomed) problems.push(`the flow wants a ${b.zoom}× zoom here, and there's none`);
@@ -379,7 +364,7 @@ if (fix) {
         lines.push(`- ${b.t.toFixed(1)} s ${b.label}: wanted a ${b.zoom}× zoom, but what it needs (${need.w}×${need.h}) only fits at ${amount}×; left unzoomed`);
         continue;
       }
-      const z = {id: `zm-flow-${i}`, start: +Math.max(before0, b.t - 0.8, prevEnd, ...scenes.filter(c => c <= b.t).map(c => Math.ceil(c * 100) / 100), ...doc.zooms.filter(z => z.start < b.t).map(z => z.end + gapAfter(z))).toFixed(2), end: +Math.min(after, b.end + 0.9).toFixed(2), amount, mode: 'manual', focus: middleOf([need], [b.target], amount)};
+      const z = {id: `zm-flow-${i}`, start: +Math.max(before0, b.t - 0.8, prevEnd, ...scenes.filter(c => c <= b.t).map(c => Math.ceil(c * 100) / 100), ...doc.zooms.filter(z => z.start < b.t).map(z => z.end + gapAfter(z))).toFixed(2), end: +Math.min(after, b.end + 0.9).toFixed(2), amount, mode: 'manual', focus: middleOf([need])};
       doc.zooms.push(z);
       doc.zooms.sort((a, c) => a.start - c.start);
       lines.push(`- ${z.start.toFixed(1)}–${z.end.toFixed(1)} s: added a ${amount}× zoom on ${b.label}, as the flow asked`);
@@ -392,14 +377,14 @@ if (fix) {
   // that share a middle, gliding from one to the next: each one centred while it's on screen.
   const amountFor = (z, need) => Math.min(z.amount, MAX_AMOUNT, Math.floor(capFor(need) * 10) / 10);
   const centredIn = (members, amount) => {
-    const w = W / amount, h = H / amount, m = middleOf(members.map(x => x.need), members.map(x => x.target), amount);
+    const w = W / amount, h = H / amount, m = middleOf(members.map(x => x.need));
     const cx = Math.max(w / 2, Math.min(W - w / 2, (m.x / 100) * W)), cy = Math.max(h / 2, Math.min(H - h / 2, (m.y / 100) * H));
     const v = {x: cx - w / 2, y: cy - h / 2, w, h};
-    const ok = (box, keep) => {
+    const ok = (box, keep, tol) => {
       const o = offCentre(box, v, keep);
-      return o.x <= OFF_CENTRE && o.y <= OFF_CENTRE;
+      return o.x <= tol && o.y <= tol;
     };
-    return members.every(m => ok(m.need) && (!m.target || ok(m.target, m.need)));
+    return members.every(m => ok(m.need, null, OFF_CENTRE) && (!m.target || ok(m.target, m.need, OFF_CENTRE_TARGET)));
   };
   const PAN = 0.7; // the glide from one group to the next
   /** The zooms z becomes: [z] reframed, or one per group of its beats; [] if none can zoom. */
@@ -418,7 +403,7 @@ if (fix) {
     // 2.6 times its average speed)
     const framed = groups.map(g => {
       const need = union(g.map(x => x.need)), amount = amountFor(z, need);
-      return {g, amount, focus: amount >= MIN_ZOOM ? middleOf(g.map(x => x.need), g.map(x => x.b.target), amount) : null};
+      return {g, amount, focus: amount >= MIN_ZOOM ? middleOf(g.map(x => x.need)) : null};
     });
     const panFor = (a, b) => {
       if (!a?.focus || !b?.focus) return PAN;
@@ -507,7 +492,7 @@ if (fix) {
         const before = z.amount;
         z.amount = +(z.amount - 0.1).toFixed(2);
         z.mode = 'manual';
-        z.focus = middleOf(inside.map(i => needs[i].need), inside.map(i => beats[i].target), z.amount);
+        z.focus = middleOf(inside.map(i => needs[i].need));
         lines.push(`- ${z.start.toFixed(1)}–${z.end.toFixed(1)} s: ${before}× → ${z.amount}×, wider so its target can be centred too`);
         continue;
       }
@@ -518,7 +503,7 @@ if (fix) {
         lines.push(`- ${z.start.toFixed(1)}–${z.end.toFixed(1)} s: ${before} → removed (${cap < MIN_ZOOM && need ? `what it covers spans ${need.w}×${need.h}, too much to zoom` : `no framing of it worked: ${why(z)}`})`);
         continue;
       }
-      const focus = middleOf(inside.map(i => needs[i].need), inside.map(i => beats[i].target), Math.min(z.amount, cap));
+      const focus = middleOf(inside.map(i => needs[i].need));
       const same = z.mode === 'manual' && z.amount === Math.min(z.amount, cap) && z.focus.x === focus.x && z.focus.y === focus.y;
       z.amount = Math.min(z.amount, cap);
       z.mode = 'manual';

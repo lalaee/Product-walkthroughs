@@ -97,14 +97,16 @@ function windowsTitleBar(title) {
 
 /** @param {import('../walkthrough/lib/director.mjs').Director} d */
 export async function run(d, ctx) {
-  const {main, overlay} = ctx;
-  // 1. the recorder: Recordly's window steps aside and its bar comes up
+  const {main, overlay, taskly} = ctx;
+  // 1. the recorder: Recordly's window steps aside and its bar comes up over the desktop (shown
+  // whole: the bar and the app it will record)
   const bar = overlay.locator('[aria-label="Recorder"]');
-  await d.click(main.getByRole('button', {name: 'New recording'}).last(), {hold: 1400, show: bar, label: 'New recording'});
+  const desktopView = [bar, taskly.locator('body')];
+  await d.click(main.getByRole('button', {name: 'New recording'}).last(), {hold: 1400, show: desktopView, label: 'New recording'});
   // 2. what to record: the entire screen
   const picker = overlay.getByRole('dialog');
   await d.click(overlay.getByRole('button', {name: 'Choose what to record'}), {hold: 2900, show: picker, label: 'Choose what to record'});
-  await d.click(picker.getByText('Entire screen'), {hold: 1000, show: bar, label: 'Entire screen'});
+  await d.click(picker.getByText('Entire screen'), {hold: 1000, show: desktopView, label: 'Entire screen'});
   // 3. record Taskly, stop
   const trimAt = await recordTaskly(d, ctx);
   // 4. in the editor: the suggested zoom, playback
@@ -115,5 +117,5 @@ export async function run(d, ctx) {
   await d.click(dialog.getByRole('button', {name: /^Export MP4$/}), {hold: 300, label: 'Export MP4'});
   // (the export takes a while on this machine: a moment of its progress, then it's done)
   await d.idle(() => dialog.getByRole('button', {name: 'Save'}).waitFor({timeout: 10 * 60_000}), {keep: 800});
-  await d.click(dialog.getByRole('button', {name: 'Save'}), {hold: 2200, show: dialog.getByText('Your video is ready'), label: 'Save', zoom: 1.6});
+  await d.click(dialog.getByRole('button', {name: 'Save'}), {hold: 2200, show: dialog, label: 'Save', zoom: 1.6});
 }

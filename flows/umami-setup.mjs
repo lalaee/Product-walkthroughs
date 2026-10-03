@@ -68,7 +68,7 @@ export async function run(d, page) {
     const dialog = page.getByRole('dialog');
     await d.type(dialog.locator('input[name=name]'), 'Taskly', {hold: 800, label: 'Name', zoom: 1.6, show: dialog});
     await d.type(dialog.locator('input[name=domain]'), 'taskly.app', {label: 'Domain', show: dialog});
-    await d.click(dialog.getByRole('button', {name: 'Save'}), {hold: 1200, show: page.getByRole('link', {name: 'Taskly'}), label: 'Save'});
+    await d.click(dialog.getByRole('button', {name: 'Save'}), {hold: 1200, show: page.getByRole('row', {name: /Taskly/}), label: 'Save'});
 
     // 3. its tracking code, in its settings
     await d.click(page.getByRole('link', {name: 'Taskly'}).first(), {hold: 1000, show: page.getByRole('button', {name: 'Edit'}), label: 'Taskly'});
@@ -97,7 +97,9 @@ export async function run(d, page) {
       await d.wait(1500);
     }, {keep: 0});
     const visitors = page.getByText('Visitors', {exact: true}).first();
-    await d.point(visitors, {hold: 2400, show: visitors.locator('xpath=ancestor::*[2]'), label: 'the first visitor', zoom: 1.6});
+    // its first visit: the row of numbers, Visitors to Views
+    const card = name => page.getByText(name, {exact: true}).first().locator('xpath=ancestor::*[2]');
+    await d.point(visitors, {hold: 2400, show: [card('Visitors'), card('Views')], label: 'the first visitor', zoom: 1.6});
   } finally {
     site?.close();
   }
