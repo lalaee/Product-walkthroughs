@@ -1,0 +1,1 @@
+Setting up Coucou: open Settings, install the Claude Code hooks (it shows you the exact change first), and Mochi starts watching your sessions from the top of your screen. Open source.
