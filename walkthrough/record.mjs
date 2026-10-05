@@ -95,7 +95,10 @@ if (flow.desktop) {
   }};
 } else {
   // room above the page for the browser's tab strip and address bar, which stay out of the shot
-  const screen = await startDisplay({width: pw, height: ph + Math.round(300 * scale)});
+  // Chromium won't make a window narrower than 500 px: a phone-width page (375, say) gets a window at
+  // that minimum and an emulated viewport of the page's size in its top-left corner, the part captured
+  const MIN_WINDOW = 500, windowWidth = Math.max(width, MIN_WINDOW);
+  const screen = await startDisplay({width: Math.round(windowWidth * scale / 2) * 2, height: ph + Math.round(300 * scale)});
   console.log(`display ${screen.display} ${width}×${height}`);
 
   // The app in a browser window at the top-left; only its page area is captured, so page
@@ -104,7 +107,7 @@ if (flow.desktop) {
     executablePath: chrome,
     headless: false,
     env: {...process.env, DISPLAY: screen.display},
-    args: ['--window-position=0,0', `--window-size=${width},${height + 200}`, `--force-device-scale-factor=${scale}`, '--no-first-run', '--disable-infobars', '--hide-crash-restore-bubble']
+    args: ['--window-position=0,0', `--window-size=${windowWidth},${height + 200}`, `--force-device-scale-factor=${scale}`, '--no-first-run', '--disable-infobars', '--hide-crash-restore-bubble']
   });
   const context = await browser.newContext({viewport: null});
   const page = await context.newPage();
@@ -113,10 +116,17 @@ if (flow.desktop) {
   const {windowId} = await cdp.send('Browser.getWindowForTarget');
   const measure = () => page.evaluate(() => ({iw: innerWidth, ih: innerHeight, ow: outerWidth, oh: outerHeight, sx: screenX, sy: screenY}));
   let m = await measure();
-  await cdp.send('Browser.setWindowBounds', {windowId, bounds: {left: 0, top: 0, width: width + m.ow - m.iw, height: height + m.oh - m.ih}});
+  await cdp.send('Browser.setWindowBounds', {windowId, bounds: {left: 0, top: 0, width: windowWidth + m.ow - m.iw, height: height + m.oh - m.ih}});
   await page.waitForTimeout(500);
   m = await measure();
-  if (m.iw !== width || m.ih !== height) throw new Error(`couldn't size the page to ${width}×${height} (it is ${m.iw}×${m.ih})`);
+  if (m.iw !== windowWidth || m.ih !== height) throw new Error(`couldn't size the page to ${windowWidth}×${height} (it is ${m.iw}×${m.ih})`);
+  if (width < MIN_WINDOW) {
+    // (m, the window's edges, stays as measured: the emulated page starts at the same top-left)
+    await cdp.send('Emulation.setDeviceMetricsOverride', {width, height, deviceScaleFactor: scale, mobile: false});
+    await page.waitForTimeout(300);
+    const e = await measure();
+    if (e.iw !== width || e.ih !== height) throw new Error(`couldn't emulate a ${width}×${height} page (it is ${e.iw}×${e.ih})`);
+  }
   if (flow.setup) {
     try {
       await flow.setup(page);
