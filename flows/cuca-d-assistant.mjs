@@ -23,7 +23,7 @@ export async function run(d, page) {
   await onAccount(d, page);
   const ai = page.getByRole('link', {name: 'Open the Assistant'});
   await d.point(ai, {hold: 1200, label: 'the AI button'});
-  await d.click(ai, {hold: 1800, show: page.getByRole('heading', {name: /Hi Lekan/}).or(page.locator('.suggestions')).first(), label: 'the Assistant'});
+  await d.click(ai, {hold: 1800, show: [page.getByRole('heading', {name: /Hi Lekan/}), page.getByRole('textbox', {name: 'Enter your message'})], label: 'the Assistant'});
 
   await d.click(page.getByRole('button', {name: 'Where is my order?'}), {hold: 700,
     show: page.getByRole('status', {name: 'The Assistant is writing'}), label: 'loading'});

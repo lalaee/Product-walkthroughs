@@ -258,6 +258,19 @@ zoom. Hold after a click that changes the screen, so the viewer sees what happen
 
 ## Videos
 
+- `videos/cuca-a-search.mp4`, `cuca-b-guided.mp4`, `cuca-c-orders.mp4`, `cuca-d-assistant.mp4`:
+  [Cuca Vision](https://github.com/lalaee/cuca-vision), four ways to redesign help on Zalando's
+  "Your account" screen, one video each, on a phone (375×812 at 3×, 9:16, 1370×2436). No captions
+  or narration. **A · Search** (27.1 s): Help and contact → search "I want to cancel my order" →
+  results → the article → Need more help? → contact options. **B · Guided** (30.7 s): Help and
+  contact → pick an order → I did not receive this parcel → back → Item is different from the order
+  → back → Returns and refunds hub. **C · Orders** (22.3 s): Orders → View Order → Get help with
+  this order → I did not receive this parcel (B's answer). **D · Assistant** (19.2 s): the AI
+  button → Assistant → Where is my order? → loading → the reply with your orders → help on that
+  order. Each approach is its own Vite app from the repo's `app/` (`npm run dev:search`, `:guided`,
+  `:orders`, `:assistant` on 5174–5177; `CUCA_*_URL` to override), unmodified; the Assistant's
+  reply is the app's designed one. All checks passed. Posters, share copy, plans and contact sheets
+  alongside (`videos/cuca-*`).
 - `videos/coucou-setup.mp4`: setting up [Coucou](https://github.com/lalaee/coucou) to watch your
   Claude Code sessions, entirely in Coucou's own UI: Mochi and the island at the top of the screen,
   the card saying hooks aren't installed, Settings → Claude Code → Install hooks, the exact diff it
