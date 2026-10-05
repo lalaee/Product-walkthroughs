@@ -266,8 +266,9 @@ zoom. Hold after a click that changes the screen, so the viewer sees what happen
   repo, unmodified), on a plain desktop; on Linux without a layer-shell compositor the island is a
   window pinned to the top edge, not a Mac notch. The hooks are really written (a fresh HOME each
   run). Coucou uses the OS font (Segoe UI), which is proprietary, so it's rendered in Selawik,
-  Microsoft's metric-compatible open substitute, with the real Cascadia Mono. Captions at the top.
-  31.2 s, 1920×1080 (16:9), all checks passed. Poster, share copy, plan and contact sheet alongside
+  Microsoft's metric-compatible open substitute, with the real Cascadia Mono. Captions at the top;
+  `-narrated.mp4` is the same walkthrough with the voice (ElevenLabs), its captions the spoken
+  lines. 43.0 s, 1920×1080 (16:9), all checks passed. Poster, share copy, plan and contact sheet alongside
   (`videos/coucou-setup*`).
 - `videos/recordly-record.mp4`: Recordly recording a fresh screen on a 1440×900 desktop drawn at
   8/3 pixel density: 3840×2400, 4K at 16:10. It starts a new recording, hides the recorder,

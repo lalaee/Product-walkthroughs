@@ -25,7 +25,7 @@ export const plan = {
   audience: 'People who run Claude Code and want to watch their sessions at a glance.',
   flow: ['Coucou on screen, with Mochi', "Claude Code isn't connected yet", 'Open Settings', 'Install hooks: the exact diff', 'Back up and write', 'Back in the island: connected'],
   duration: [25, 45],
-  milestones: [{beat: 'Install hooks', by: 18}, {beat: 'connected', by: 40}]
+  milestones: [{beat: 'Install hooks', by: 22}, {beat: 'connected', by: 42}]
 };
 export const poster = 'connected';
 export const share = 'Setting up Coucou: open Settings, install the Claude Code hooks (it shows you the exact change first), and Mochi starts watching your sessions from the top of your screen. Open source.';

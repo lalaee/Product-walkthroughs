@@ -15,5 +15,5 @@
 ## Checks
 
 - Length: 25–45 s
-- "Install hooks" by 18 s
-- "connected" by 40 s
+- "Install hooks" by 22 s
+- "connected" by 42 s
