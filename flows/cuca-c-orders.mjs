@@ -24,7 +24,7 @@ export async function run(d, page) {
 
   const view = page.locator('a[href^="#/orders/"]').filter({hasText: 'View Order'}).first();
   await d.scroll(view, {hold: 1000, label: 'the latest order'});
-  await d.click(view, {hold: 2200, show: page.getByText('Order number').first(), label: 'order details'});
+  await d.click(view, {hold: 3000, show: page.getByText('Order number').first(), label: 'order details'});
 
   const help = page.getByRole('link', {name: 'Get help with this order'});
   await d.scroll(help, {hold: 1200, label: 'down the order'});

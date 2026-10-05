@@ -97,7 +97,9 @@ if (flow.desktop) {
   // room above the page for the browser's tab strip and address bar, which stay out of the shot
   // Chromium won't make a window narrower than 500 px: a phone-width page (375, say) gets a window at
   // that minimum and an emulated viewport of the page's size in its top-left corner, the part captured
-  const MIN_WINDOW = 500, windowWidth = Math.max(width, MIN_WINDOW);
+  // (and a window taller than the page, so the link-preview bubble Chromium draws at the window's
+  // bottom-left falls below the captured area)
+  const MIN_WINDOW = 500, emulated = width < MIN_WINDOW, windowWidth = Math.max(width, MIN_WINDOW), windowHeight = emulated ? height + 80 : height;
   const screen = await startDisplay({width: Math.round(windowWidth * scale / 2) * 2, height: ph + Math.round(300 * scale)});
   console.log(`display ${screen.display} ${width}×${height}`);
 
@@ -116,11 +118,11 @@ if (flow.desktop) {
   const {windowId} = await cdp.send('Browser.getWindowForTarget');
   const measure = () => page.evaluate(() => ({iw: innerWidth, ih: innerHeight, ow: outerWidth, oh: outerHeight, sx: screenX, sy: screenY}));
   let m = await measure();
-  await cdp.send('Browser.setWindowBounds', {windowId, bounds: {left: 0, top: 0, width: windowWidth + m.ow - m.iw, height: height + m.oh - m.ih}});
+  await cdp.send('Browser.setWindowBounds', {windowId, bounds: {left: 0, top: 0, width: windowWidth + m.ow - m.iw, height: windowHeight + m.oh - m.ih}});
   await page.waitForTimeout(500);
   m = await measure();
-  if (m.iw !== windowWidth || m.ih !== height) throw new Error(`couldn't size the page to ${windowWidth}×${height} (it is ${m.iw}×${m.ih})`);
-  if (width < MIN_WINDOW) {
+  if (m.iw !== windowWidth || m.ih !== windowHeight) throw new Error(`couldn't size the page to ${windowWidth}×${windowHeight} (it is ${m.iw}×${m.ih})`);
+  if (emulated) {
     // (m, the window's edges, stays as measured: the emulated page starts at the same top-left)
     await cdp.send('Emulation.setDeviceMetricsOverride', {width, height, deviceScaleFactor: scale, mobile: false});
     await page.waitForTimeout(300);

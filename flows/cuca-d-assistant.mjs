@@ -22,7 +22,7 @@ export const url = urls.assistant;
 export async function run(d, page) {
   await onAccount(d, page);
   const ai = page.getByRole('link', {name: 'Open the Assistant'});
-  await d.point(ai, {hold: 1000, zoom: 1.6, label: 'the AI button'});
+  await d.point(ai, {hold: 1200, label: 'the AI button'});
   await d.click(ai, {hold: 1800, show: page.getByRole('heading', {name: /Hi Lekan/}).or(page.locator('.suggestions')).first(), label: 'the Assistant'});
 
   await d.click(page.getByRole('button', {name: 'Where is my order?'}), {hold: 700,
@@ -30,7 +30,7 @@ export async function run(d, page) {
   const reply = page.locator('.reply');
   await reply.waitFor();
   await d.wait(500);
-  await d.point(page.locator('.reply__card').first(), {hold: 2400, show: page.locator('.reply'), label: 'the reply'});
+  await d.point(page.locator('.reply__card').first(), {hold: 2600, show: [page.locator('.reply .bubble').first(), page.locator('.reply__card').first()], label: 'the reply'});
 
   await d.click(page.getByRole('link', {name: 'Need help with this order?'}).first(), {hold: 3000,
     show: page.getByText('What was wrong with this parcel?'), label: 'help on that order'});

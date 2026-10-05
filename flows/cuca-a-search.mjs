@@ -31,4 +31,6 @@ export async function run(d, page) {
   const more = page.getByRole('button', {name: 'Need more help?'});
   await d.scroll(more, {hold: 1400, label: 'end of the article'});
   await d.click(more, {hold: 3200, show: [page.locator('.contact__question'), page.getByRole('button', {name: 'Send email'})], label: 'contact options'});
+  // off the button, so its label reads
+  await d.point(page.locator('.contact__question'), {hold: 1200, label: 'contact us directly'});
 }
