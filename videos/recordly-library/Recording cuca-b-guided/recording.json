@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "id": "rec-cuca-b-guided",
+  "name": "Cuca Vision B — guided help",
+  "createdAt": "2026-10-05T21:53:33.050Z",
+  "status": "complete",
+  "platform": "linux",
+  "backend": "x11grab",
+  "source": {
+    "kind": "screen",
+    "name": "Screen",
+    "frame": {
+      "x": 0,
+      "y": 0,
+      "width": 375,
+      "height": 812
+    },
+    "scaleFactor": 3
+  },
+  "tracks": {
+    "screen": {
+      "file": "screen.mp4",
+      "startedAt": 1791237213050,
+      "width": 1126,
+      "height": 2436,
+      "fps": 60,
+      "cursorInVideo": false,
+      "systemAudio": false
+    },
+    "cursor": {
+      "file": "cursor.ndjson",
+      "clicks": true
+    }
+  },
+  "pauses": [],
+  "durationSec": 30.65,
+  "endedAt": 1791237243700
+}

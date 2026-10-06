@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "id": "rec-recordly-record",
+  "name": "Recordly — record your screen",
+  "createdAt": "2026-10-02T18:44:33.800Z",
+  "status": "complete",
+  "platform": "linux",
+  "backend": "x11grab",
+  "source": {
+    "kind": "screen",
+    "name": "Screen",
+    "frame": {
+      "x": 0,
+      "y": 0,
+      "width": 1440,
+      "height": 900
+    },
+    "scaleFactor": 2.6666666666666665
+  },
+  "tracks": {
+    "screen": {
+      "file": "screen.mp4",
+      "startedAt": 1790966673800,
+      "width": 3840,
+      "height": 2400,
+      "fps": 60,
+      "cursorInVideo": false,
+      "systemAudio": false
+    },
+    "cursor": {
+      "file": "cursor.ndjson",
+      "clicks": true
+    }
+  },
+  "pauses": [],
+  "durationSec": 43.833333,
+  "endedAt": 1790966717633
+}

@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "id": "rec-rottoways-before-after",
+  "name": "Rottoways: before and after",
+  "createdAt": "2026-10-03T14:09:58.217Z",
+  "status": "complete",
+  "platform": "linux",
+  "backend": "x11grab",
+  "source": {
+    "kind": "screen",
+    "name": "Screen",
+    "frame": {
+      "x": 0,
+      "y": 0,
+      "width": 1440,
+      "height": 900
+    },
+    "scaleFactor": 1.3333333333333333
+  },
+  "tracks": {
+    "screen": {
+      "file": "screen.mp4",
+      "startedAt": 1791036598217,
+      "width": 1920,
+      "height": 1200,
+      "fps": 60,
+      "cursorInVideo": false,
+      "systemAudio": false
+    },
+    "cursor": {
+      "file": "cursor.ndjson",
+      "clicks": true
+    }
+  },
+  "pauses": [],
+  "durationSec": 41.2,
+  "endedAt": 1791036639417
+}

@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "id": "rec-umami-traffic",
+  "name": "Umami — where did that spike come from?",
+  "createdAt": "2026-10-02T21:58:53.283Z",
+  "status": "complete",
+  "platform": "linux",
+  "backend": "x11grab",
+  "source": {
+    "kind": "screen",
+    "name": "Screen",
+    "frame": {
+      "x": 0,
+      "y": 0,
+      "width": 1440,
+      "height": 900
+    },
+    "scaleFactor": 1.3333333333333333
+  },
+  "tracks": {
+    "screen": {
+      "file": "screen.mp4",
+      "startedAt": 1790978333283,
+      "width": 1920,
+      "height": 1200,
+      "fps": 60,
+      "cursorInVideo": false,
+      "systemAudio": false
+    },
+    "cursor": {
+      "file": "cursor.ndjson",
+      "clicks": true
+    }
+  },
+  "pauses": [],
+  "durationSec": 17.783333,
+  "endedAt": 1790978351066
+}

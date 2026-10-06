@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "id": "rec-demo-taskly",
+  "name": "Taskly — create a project",
+  "createdAt": "2026-10-02T16:57:54.283Z",
+  "status": "complete",
+  "platform": "linux",
+  "backend": "x11grab",
+  "source": {
+    "kind": "screen",
+    "name": "Screen",
+    "frame": {
+      "x": 0,
+      "y": 0,
+      "width": 1920,
+      "height": 1080
+    },
+    "scaleFactor": 1
+  },
+  "tracks": {
+    "screen": {
+      "file": "screen.mp4",
+      "startedAt": 1790960274283,
+      "width": 1920,
+      "height": 1080,
+      "fps": 60,
+      "cursorInVideo": false,
+      "systemAudio": false
+    },
+    "cursor": {
+      "file": "cursor.ndjson",
+      "clicks": true
+    }
+  },
+  "pauses": [],
+  "durationSec": 26.75,
+  "endedAt": 1790960301033
+}

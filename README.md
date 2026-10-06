@@ -283,6 +283,15 @@ zoom. Hold after a click that changes the screen, so the viewer sees what happen
   `-narrated.mp4` is the same walkthrough with the voice (ElevenLabs), its captions the spoken
   lines. 43.0 s, 1920×1080 (16:9), all checks passed. Poster, share copy, plan and contact sheet alongside
   (`videos/coucou-setup*`).
+- `videos/recordly-library/`: the Recordly projects behind the videos here, to edit them yourself in
+  Recordly: in Recordly, Settings › Recordings folder → this folder (or copy what's in it into your
+  own recordings folder). Each project opens in the editor with its zooms, captions and trims, and
+  the recording it uses sits beside it (`Recording <flow>/`). One project per video: Coucou (setup
+  and approval), Cuca Vision A–D, Taskly, LocalSend, Recordly (record, Windows), Rottoways, Umami
+  (setup, traffic), and the Design to AI preview. The narrated versions' voice isn't in the
+  projects: it's mixed in afterwards (`finish.mjs --narrated`), so a project exports silent with
+  the spoken lines as captions. Made with `node walkthrough/library-export.mjs videos/recordly-library
+  out/<flow> …`.
 - `videos/coucou-approve.mp4`: [Coucou](https://github.com/lalaee/coucou) end to end, ending on what
   it's for: Mochi at the top of the screen, "Hooks not installed", Settings → Install hooks (the
   exact diff for `~/.claude/settings.json`), Back up and write, Connected, and then a Claude Code
@@ -292,9 +301,9 @@ zoom. Hold after a click that changes the screen, so the viewer sees what happen
   `flows/coucou-web/host.js`: the hooks aren't really written (the diff is the one Coucou shows for
   an empty settings file), the Claude Code session is the real hook payloads played in order rather
   than a live `claude`, and the Settings window's title bar and the desktop are stand-ins. Captions
-  at the top; `-narrated.mp4` has the voice (ElevenLabs). 46.5 s, 1920×1200 (16:10). Review: 12
-  beats, 9 pass; Mochi, "done" and "Connected" show without the zoom the flow asked for (the island
-  sits on the screen's top edge, where a zoom can't centre it). Poster, share copy, plan and frames
+  at the top; `-narrated.mp4` has the voice (ElevenLabs). 46.6 s, 1920×1200 (16:10). Review: 12
+  beats, 8 pass; Mochi, Install hooks, "done" and "Connected" show without the zoom the flow asked
+  for (the island sits on the screen's top edge, where a zoom can't centre it). Poster, share copy, plan and frames
   alongside (`videos/coucou-approve*`).
 - `videos/recordly-record.mp4`: Recordly recording a fresh screen on a 1440×900 desktop drawn at
   8/3 pixel density: 3840×2400, 4K at 16:10. It starts a new recording, hides the recorder,

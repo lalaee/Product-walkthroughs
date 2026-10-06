@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "id": "rec-coucou-setup",
+  "name": "Coucou — connect it to Claude Code",
+  "createdAt": "2026-10-05T18:49:09.383Z",
+  "status": "complete",
+  "platform": "linux",
+  "backend": "x11grab",
+  "source": {
+    "kind": "screen",
+    "name": "Screen",
+    "frame": {
+      "x": 0,
+      "y": 0,
+      "width": 1920,
+      "height": 1080
+    },
+    "scaleFactor": 1
+  },
+  "tracks": {
+    "screen": {
+      "file": "screen.mp4",
+      "startedAt": 1791226149383,
+      "width": 1920,
+      "height": 1080,
+      "fps": 60,
+      "cursorInVideo": false,
+      "systemAudio": false
+    },
+    "cursor": {
+      "file": "cursor.ndjson",
+      "clicks": true
+    }
+  },
+  "pauses": [],
+  "durationSec": 43.016667,
+  "endedAt": 1791226192400
+}

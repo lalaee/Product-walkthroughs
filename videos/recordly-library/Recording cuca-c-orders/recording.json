@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "id": "rec-cuca-c-orders",
+  "name": "Cuca Vision C — help from the order",
+  "createdAt": "2026-10-05T22:03:47.417Z",
+  "status": "complete",
+  "platform": "linux",
+  "backend": "x11grab",
+  "source": {
+    "kind": "screen",
+    "name": "Screen",
+    "frame": {
+      "x": 0,
+      "y": 0,
+      "width": 375,
+      "height": 812
+    },
+    "scaleFactor": 3
+  },
+  "tracks": {
+    "screen": {
+      "file": "screen.mp4",
+      "startedAt": 1791237827417,
+      "width": 1126,
+      "height": 2436,
+      "fps": 60,
+      "cursorInVideo": false,
+      "systemAudio": false
+    },
+    "cursor": {
+      "file": "cursor.ndjson",
+      "clicks": true
+    }
+  },
+  "pauses": [],
+  "durationSec": 22.333333,
+  "endedAt": 1791237849750
+}

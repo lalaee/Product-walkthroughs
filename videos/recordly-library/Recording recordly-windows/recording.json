@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "id": "rec-recordly-windows",
+  "name": "Recordly — how to record on Windows",
+  "createdAt": "2026-10-03T08:12:09.417Z",
+  "status": "complete",
+  "platform": "linux",
+  "backend": "x11grab",
+  "source": {
+    "kind": "screen",
+    "name": "Screen",
+    "frame": {
+      "x": 0,
+      "y": 0,
+      "width": 1920,
+      "height": 1080
+    },
+    "scaleFactor": 1.3333333333333333
+  },
+  "tracks": {
+    "screen": {
+      "file": "screen.mp4",
+      "startedAt": 1791015129417,
+      "width": 2560,
+      "height": 1440,
+      "fps": 60,
+      "cursorInVideo": false,
+      "systemAudio": false
+    },
+    "cursor": {
+      "file": "cursor.ndjson",
+      "clicks": true
+    }
+  },
+  "pauses": [],
+  "durationSec": 43.133333,
+  "endedAt": 1791015172550
+}

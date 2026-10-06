@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "id": "rec-cuca-a-search",
+  "name": "Cuca Vision A — search-led help",
+  "createdAt": "2026-10-05T21:45:10.683Z",
+  "status": "complete",
+  "platform": "linux",
+  "backend": "x11grab",
+  "source": {
+    "kind": "screen",
+    "name": "Screen",
+    "frame": {
+      "x": 0,
+      "y": 0,
+      "width": 375,
+      "height": 812
+    },
+    "scaleFactor": 3
+  },
+  "tracks": {
+    "screen": {
+      "file": "screen.mp4",
+      "startedAt": 1791236710683,
+      "width": 1126,
+      "height": 2436,
+      "fps": 60,
+      "cursorInVideo": false,
+      "systemAudio": false
+    },
+    "cursor": {
+      "file": "cursor.ndjson",
+      "clicks": true
+    }
+  },
+  "pauses": [],
+  "durationSec": 27.116667,
+  "endedAt": 1791236737800
+}
