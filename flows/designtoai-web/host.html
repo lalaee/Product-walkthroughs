@@ -1,0 +1,38 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Design to AI</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0f0f0f; font-family: Inter, system-ui, sans-serif; }
+  /* the editor: a screenshot of Framer (/backdrop), or a plain canvas without one */
+  #backdrop { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  #backdrop[hidden] + #canvas { display: block; }
+  #canvas { display: none; position: absolute; inset: 0; background: #1b1b1b; }
+  /* the component on the canvas: clicking it selects it, as in Framer */
+  #component { position: absolute; cursor: default; }
+  #component.selected { outline: 1px solid #0099ff; }
+  #component.selected::after { content: attr(data-name); position: absolute; left: -1px; top: -20px; padding: 1px 5px;
+    font: 500 11px Inter, system-ui, sans-serif; color: #fff; background: #0099ff; border-radius: 3px; }
+  /* the plugin's window, floating over the canvas */
+  #plugin-window { position: absolute; width: 320px; background: #111; border-radius: 10px; overflow: hidden;
+    box-shadow: 0 10px 40px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.08); }
+  #plugin-window[hidden] { display: none; }
+  #plugin-window header { height: 36px; display: flex; align-items: center; padding: 0 12px; gap: 8px;
+    font: 600 12px Inter, system-ui, sans-serif; color: #fff; border-bottom: 1px solid #222; }
+  #plugin-window header img { width: 16px; height: 16px; border-radius: 4px; }
+  #plugin { display: block; width: 320px; height: 520px; border: 0; background: #111; color-scheme: dark; }
+</style>
+</head>
+<body>
+<img id="backdrop" alt="">
+<div id="canvas"></div>
+<div id="component" data-name="Slideshow"></div>
+<div id="plugin-window" hidden>
+  <header><img src="/plugin/icon.svg" alt="">Design to AI</header>
+  <iframe id="plugin" title="Design to AI"></iframe>
+</div>
+<script src="/host.js"></script>
+</body>
+</html>
