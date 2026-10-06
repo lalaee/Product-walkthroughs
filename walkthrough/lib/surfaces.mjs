@@ -52,9 +52,15 @@ export class PageSurface {
   /** As the browser would draw it, from the CSS cursor under the pointer. */
   shape({x, y}) {
     return this.page.evaluate(([x, y]) => {
-      const el = document.elementFromPoint(x, y);
+      let doc = document, el = doc.elementFromPoint(x, y);
+      // into same-origin frames: the element under the pointer is the frame's, not the iframe itself
+      while (el?.tagName === 'IFRAME' && el.contentDocument) {
+        const r = el.getBoundingClientRect();
+        x -= r.left; y -= r.top; doc = el.contentDocument;
+        el = doc.elementFromPoint(x, y);
+      }
       if (!el) return 'arrow';
-      const c = getComputedStyle(el).cursor;
+      const c = (el.ownerDocument.defaultView ?? window).getComputedStyle(el).cursor;
       if (c === 'pointer') return 'pointer';
       if (c === 'grab' || c === 'grabbing') return 'grab';
       if (c === 'text' || c === 'vertical-text') return 'text';

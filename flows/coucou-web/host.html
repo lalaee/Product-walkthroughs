@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Coucou</title>
+<style>
+  :root { color-scheme: dark; } /* the same as the island page, or Chromium paints its frame opaque */
+  html, body { margin: 0; height: 100%; overflow: hidden; }
+  body { background: #11141f url(/__host/desktop.png) center / cover no-repeat; font: 13px system-ui, sans-serif; }
+  /* the island's window: 720×320 at the top centre of the screen, see-through */
+  #island { position: fixed; top: 0; left: 50%; transform: translateX(-50%); width: 720px; height: 320px; border: 0; background: transparent; z-index: 2; }
+  /* the Settings window (560×680, as in src-tauri), with a plain title bar standing in for the OS's */
+  #settings-window { position: fixed; top: 180px; left: 50%; transform: translateX(-50%); width: 560px; border-radius: 10px; overflow: hidden;
+    box-shadow: 0 24px 60px rgba(0,0,0,.45), 0 0 0 1px rgba(255,255,255,.08); background: #0d0d0f; z-index: 1; }
+  #settings-window[hidden] { display: none; }
+  .titlebar { height: 34px; display: flex; align-items: center; justify-content: center; position: relative; background: #1b1c20; color: #c9cbd1; font-size: 12.5px; user-select: none; }
+  .titlebar button { position: absolute; right: 8px; top: 7px; width: 20px; height: 20px; border: 0; border-radius: 50%; background: #34363c; color: #c9cbd1; font-size: 13px; line-height: 20px; padding: 0; cursor: pointer; }
+  #settings { display: block; width: 560px; height: 680px; border: 0; background: #0d0d0f; }
+</style>
+</head>
+<body>
+  <div id="settings-window" hidden>
+    <div class="titlebar">Settings — Coucou<button aria-label="Close settings" onclick="coucou.closeSettings()">×</button></div>
+    <iframe id="settings" title="Settings — Coucou"></iframe>
+  </div>
+  <iframe id="island" title="Coucou island" allowtransparency="true"></iframe>
+  <!-- the island's top edge, where the pointer wakes it: a target for the flow, invisible, clicks pass through -->
+  <div id="island-top" aria-hidden="true" style="position: fixed; top: 6px; left: 50%; transform: translateX(-50%); width: 160px; height: 22px; pointer-events: none; z-index: 3"></div>
+  <script src="/__host/host.js"></script>
+  <script>document.getElementById('island').src = '/index.html';</script>
+</body>
+</html>
