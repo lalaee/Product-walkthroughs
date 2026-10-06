@@ -1,0 +1,1 @@
+Coucou: install the Claude Code hooks (it shows you the exact change first), and the next time Claude needs permission, approve it right from the top of your screen.

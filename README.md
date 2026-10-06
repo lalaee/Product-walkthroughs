@@ -283,6 +283,19 @@ zoom. Hold after a click that changes the screen, so the viewer sees what happen
   `-narrated.mp4` is the same walkthrough with the voice (ElevenLabs), its captions the spoken
   lines. 43.0 s, 1920×1080 (16:9), all checks passed. Poster, share copy, plan and contact sheet alongside
   (`videos/coucou-setup*`).
+- `videos/coucou-approve.mp4`: [Coucou](https://github.com/lalaee/coucou) end to end, ending on what
+  it's for: Mochi at the top of the screen, "Hooks not installed", Settings → Install hooks (the
+  exact diff for `~/.claude/settings.json`), Back up and write, Connected, and then a Claude Code
+  session asks to run `npm test`: the request shows up in the island, one click on Allow, and Claude
+  carries on to finished. Coucou's real interface (its `windows/` web frontend, built from the repo
+  with `npx vite build`, served unmodified) running in a browser, with its native side stood in by
+  `flows/coucou-web/host.js`: the hooks aren't really written (the diff is the one Coucou shows for
+  an empty settings file), the Claude Code session is the real hook payloads played in order rather
+  than a live `claude`, and the Settings window's title bar and the desktop are stand-ins. Captions
+  at the top; `-narrated.mp4` has the voice (ElevenLabs). 46.5 s, 1920×1200 (16:10). Review: 12
+  beats, 9 pass; Mochi, "done" and "Connected" show without the zoom the flow asked for (the island
+  sits on the screen's top edge, where a zoom can't centre it). Poster, share copy, plan and frames
+  alongside (`videos/coucou-approve*`).
 - `videos/recordly-record.mp4`: Recordly recording a fresh screen on a 1440×900 desktop drawn at
   8/3 pixel density: 3840×2400, 4K at 16:10. It starts a new recording, hides the recorder,
   creates a project in Taskly while it records, stops with Ctrl+Shift+2, lands in the editor
